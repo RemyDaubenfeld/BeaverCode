@@ -1,0 +1,565 @@
+{
+  "code": [
+    {
+      "id": "code_function",
+      "label": "Écriture d'une fonction",
+      "prompt": "Write a Python function that takes a list of integers and returns the two numbers that add up to a target sum. Return None if no pair exists. Include type hints and a docstring.",
+      "checks": {
+        "rules": [
+          "def ",
+          "return",
+          "->",
+          "\"\"\""
+        ],
+        "judge_criteria": "Does the code correctly solve the two-sum problem? Is there a docstring? Are type hints present? Is the logic correct and efficient?"
+      }
+    },
+    {
+      "id": "code_debug",
+      "label": "Débogage",
+      "prompt": "Fix this Python code and explain what was wrong:\n```python\ndef calculate_average(numbers):\n    total = 0\n    for n in numbers\n        total += n\n    return total / len(numbers)\n```",
+      "checks": {
+        "rules": [
+          ":",
+          "explain",
+          "SyntaxError",
+          "colon"
+        ],
+        "judge_criteria": "Did the model fix the missing colon after 'numbers'? Did it explain the syntax error clearly? Did it also mention the potential ZeroDivisionError?"
+      }
+    },
+    {
+      "id": "code_refactor",
+      "label": "Refactoring",
+      "prompt": "Refactor this code to be more Pythonic:\n```python\nresult = []\nfor i in range(len(my_list)):\n    if my_list[i] % 2 == 0:\n        result.append(my_list[i] * 2)\n```",
+      "checks": {
+        "rules": [
+          "[",
+          "for",
+          "in",
+          "if"
+        ],
+        "judge_criteria": "Did the model use a list comprehension? Is the result more concise and readable than the original? Is the logic equivalent?"
+      }
+    }
+  ],
+  "chat": [
+    {
+      "id": "chat_explain",
+      "label": "Explication d'un concept",
+      "prompt": "Explain the difference between a process and a thread in operating systems. Use a simple analogy.",
+      "checks": {
+        "rules": [
+          "process",
+          "thread",
+          "memory",
+          "share"
+        ],
+        "judge_criteria": "Is the difference clearly explained? Is there a concrete analogy? Are key points covered (memory isolation, shared memory, scheduling)?"
+      }
+    },
+    {
+      "id": "chat_instruction",
+      "label": "Suivi d'instructions complexes",
+      "prompt": "List exactly 5 European capitals. Format your answer as a numbered list. Include the country for each capital. Do not include any other text.",
+      "checks": {
+        "rules": [
+          "1.",
+          "2.",
+          "3.",
+          "4.",
+          "5."
+        ],
+        "judge_criteria": "Are there exactly 5 items? Are they all European capitals? Is each paired with its country? Is there no extra preamble or conclusion text?"
+      }
+    },
+    {
+      "id": "chat_summarize",
+      "label": "Résumé structuré",
+      "prompt": "Summarize the following in exactly 3 bullet points:\n\nDocker is a platform that allows developers to package applications into containers—standardized units that include the application code, runtime, system tools, libraries, and settings. Containers are isolated from one another and from the host system, which makes them portable across different environments. Unlike virtual machines, containers share the host OS kernel, making them lightweight and fast to start.",
+      "checks": {
+        "rules": [
+          "-",
+          "•",
+          "*",
+          "container"
+        ],
+        "judge_criteria": "Are there exactly 3 bullet points? Does each point capture a distinct key idea from the text? Is the summary accurate and concise?"
+      }
+    }
+  ],
+  "reasoning": [
+    {
+      "id": "reason_logic",
+      "label": "Raisonnement logique",
+      "prompt": "Alice, Bob, and Carol each have a different pet: a cat, a dog, and a fish. Alice does not have the cat. Bob does not have the fish. Carol does not have the dog. What pet does each person have?",
+      "checks": {
+        "rules": [
+          "Alice",
+          "Bob",
+          "Carol"
+        ],
+        "judge_criteria": "Is the final answer correct? (Alice=dog, Bob=cat, Carol=fish) Did the model show its reasoning step by step? Is the logic sound and clear?"
+      }
+    },
+    {
+      "id": "reason_plan",
+      "label": "Planification structurée",
+      "prompt": "I want to build a REST API with Python. Give me a structured implementation plan with phases. Each phase must have a title, a goal, and 2-3 concrete tasks. Maximum 4 phases. Do not write any code.",
+      "checks": {
+        "rules": [
+          "phase",
+          "Phase",
+          "1.",
+          "2.",
+          "task",
+          "Task",
+          "goal",
+          "Goal"
+        ],
+        "judge_criteria": "Are there 3-4 phases? Does each have a clear title and goal? Are the tasks concrete and actionable? Did the model avoid writing code as instructed?"
+      }
+    },
+    {
+      "id": "reason_constraint",
+      "label": "Respect des contraintes",
+      "prompt": "Write a haiku about programming. Then write a one-sentence explanation of what the haiku means. Use exactly this format:\nHAIKU:\n[your haiku]\nMEANING:\n[your explanation]",
+      "checks": {
+        "rules": [
+          "HAIKU:",
+          "MEANING:"
+        ],
+        "judge_criteria": "Did the model use the exact format HAIKU: and MEANING:? Is the haiku a valid haiku (5-7-5 syllables approximately)? Is the meaning explanation a single sentence?"
+      }
+    }
+  ],
+  "instruction_following": [
+    {
+      "id": "inst_scope",
+      "label": "Périmètre limité",
+      "prompt": "Answer ONLY with a single word. What is the capital of France?",
+      "checks": {
+        "rules": [
+          "Paris"
+        ],
+        "judge_criteria": "Did the model answer with only one word 'Paris'? Any additional text, explanation, or formatting means the model failed to follow the scope constraint."
+      }
+    },
+    {
+      "id": "inst_format",
+      "label": "Format imposé",
+      "prompt": "Rate the following programming languages on a scale of 1-10 for beginner friendliness. Output ONLY a JSON object, no other text:\nLanguages: Python, C++, JavaScript",
+      "checks": {
+        "rules": [
+          "{",
+          "}",
+          "Python",
+          "JavaScript"
+        ],
+        "judge_criteria": "Is the output valid JSON? Does it include all three languages? Are the values numbers between 1 and 10? Is there no text outside the JSON?"
+      }
+    }
+  ],
+  "summarization": [
+    {
+      "id": "sum_release_notes",
+      "label": "Résumé structuré",
+      "prompt": "Summarize this release note in 3 bullets and one short takeaway.\n\nVersion 3.2 improves startup time by 18%, reduces memory usage in the image pipeline, fixes a race condition during sync, and adds a new admin audit export. A legacy CSV import path is deprecated and will be removed next quarter.",
+      "checks": {
+        "rules": [
+          "-",
+          "startup",
+          "memory",
+          "sync",
+          "audit"
+        ],
+        "judge_criteria": "Are there exactly 3 bullets? Does each capture a distinct key fact from the note? Is there a short takeaway? Is the summary factually accurate?"
+      }
+    },
+    {
+      "id": "sum_meeting_notes",
+      "label": "Résumé de compte-rendu de réunion",
+      "prompt": "Summarize these meeting notes in exactly 3 bullet points and one action item.\n\nNotes: The team reviewed Q3 onboarding metrics. Drop-off is highest at the email verification step (32%). Marketing proposed simplifying the signup form. Engineering flagged that the verification email sometimes lands in spam. Everyone agreed to A/B test a shorter form next sprint, and Engineering will investigate the spam issue by Friday.",
+      "checks": {
+        "rules": [
+          "-",
+          "verification",
+          "spam",
+          "action"
+        ],
+        "judge_criteria": "Are there exactly 3 bullet points, each capturing a distinct fact from the notes (drop-off rate/step, shorter form A/B test, spam issue)? Is there one clear, separate action item (e.g. spam investigation by Friday)? Is the summary accurate?"
+      }
+    }
+  ],
+  "structured_extraction": [
+    {
+      "id": "extract_ticket_json",
+      "label": "Extraction JSON structurée",
+      "prompt": "Extract this request as JSON with keys `customer`, `product`, `severity`, `summary`, and `requested_action`. Return only valid compact JSON.\n\nHi, this is Amira from Northwind. Since yesterday's update, our invoice export in LedgerPro fails for orders above 500 lines. Finance is blocked for month-end close, so please escalate this as urgent and tell us how to roll back safely.",
+      "checks": {
+        "rules": [
+          "{",
+          "}",
+          "customer",
+          "product",
+          "severity",
+          "summary",
+          "requested_action"
+        ],
+        "judge_criteria": "Is the output valid JSON with exactly the 5 requested keys (customer, product, severity, summary, requested_action)? Are the extracted values accurate given the message? Is there no text outside the JSON?"
+      }
+    },
+    {
+      "id": "extract_invoice_json",
+      "label": "Extraction JSON d'une facture",
+      "prompt": "Extract this as JSON with keys `vendor`, `invoice_number`, `amount_due`, `due_date`, and `line_items` (an array of strings). Return only valid compact JSON.\n\nInvoice INV-2091 from Northwind Supplies. Amount due: $1,240.50, due by 2026-09-15. Items: 10x steel brackets, 5x mounting plates, shipping fee.",
+      "checks": {
+        "rules": [
+          "{",
+          "}",
+          "vendor",
+          "invoice_number",
+          "amount_due",
+          "due_date",
+          "line_items"
+        ],
+        "judge_criteria": "Is the output valid JSON with exactly the 5 requested keys? Are the extracted values accurate (vendor=Northwind Supplies, invoice_number=INV-2091, amount_due=$1,240.50 or 1240.50, due_date=2026-09-15)? Is `line_items` an array with the 3 items? Is there no text outside the JSON?"
+      }
+    }
+  ],
+  "classification": [
+    {
+      "id": "classify_support",
+      "label": "Classification de ticket support",
+      "prompt": "Classify the message as exactly one of: billing, bug, feature, sales, other. Return `label`, `confidence`, and `reason`.\n\nMessage: We upgraded to the Pro plan this morning, but the export button still says our workspace has reached the free-plan limit.",
+      "checks": {
+        "rules": [
+          "label",
+          "confidence",
+          "reason"
+        ],
+        "judge_criteria": "Did the model pick exactly one allowed label (billing/bug/feature/sales/other) without inventing a new one? Is the label appropriate given the message (likely 'bug' or 'billing')? Is there a confidence value and a short reason?"
+      }
+    },
+    {
+      "id": "classify_sentiment",
+      "label": "Classification de sentiment (avis mixte)",
+      "prompt": "Classify the sentiment of this review as exactly one of: positive, negative, neutral. Return `label`, `confidence`, and `reason`.\n\nReview: The setup was frustrating and support took 3 days to respond, but once it worked the product performed exactly as promised.",
+      "checks": {
+        "rules": [
+          "label",
+          "confidence",
+          "reason"
+        ],
+        "judge_criteria": "Did the model pick a defensible single label given the mixed sentiment (neutral is most defensible, but positive/negative with an honest reason acknowledging the mix is acceptable)? Is there a confidence value and a reason that acknowledges both the negative setup experience and the positive outcome, rather than ignoring one side?"
+      }
+    }
+  ],
+  "data_analysis": [
+    {
+      "id": "data_table_insight",
+      "label": "Analyse de tableau chiffré",
+      "prompt": "Analyze this benchmark table. Recommend one model for fast draft answers and one model for reliable structured output. Cite the numbers that matter.\n\n| model | avg_latency_s | avg_tokens_s | json_error_rate | summary_score |\n| qwen3:4b | 2.4 | 41.2 | 0.08 | 8.1 |\n| gemma3:4b | 3.1 | 34.8 | 0.02 | 8.7 |\n| llama3.2:3b | 1.7 | 45.5 | 0.16 | 7.4 |",
+      "checks": {
+        "rules": [
+          "qwen3",
+          "gemma3",
+          "llama3.2"
+        ],
+        "judge_criteria": "Does the model correctly recommend llama3.2:3b (or qwen3:4b) for speed and gemma3:4b for reliable structured output (lowest json_error_rate)? Are the cited numbers accurate? Is the tradeoff explanation clear?"
+      }
+    },
+    {
+      "id": "data_trend_anomaly",
+      "label": "Détection d'anomalie dans une série temporelle",
+      "prompt": "Analyze this weekly signups table. Describe the overall trend and flag any anomaly, citing the numbers.\n\n| week | signups |\n| W1 | 120 |\n| W2 | 135 |\n| W3 | 128 |\n| W4 | 310 |\n| W5 | 142 |",
+      "checks": {
+        "rules": [
+          "W4",
+          "310"
+        ],
+        "judge_criteria": "Did the model correctly identify W4 (310 signups) as an anomaly/spike relative to the otherwise stable ~120-140 range? Did it cite the actual numbers? Did it reasonably note the trend is roughly flat aside from the spike, rather than claiming a false overall upward/downward trend?"
+      }
+    }
+  ],
+  "translation": [
+    {
+      "id": "translate_tone",
+      "label": "Traduction avec ton préservé",
+      "prompt": "Translate this customer email into French for a professional SaaS support team. Keep the tone calm and helpful. Add one short note if an idiom needs adaptation.\n\nWe hit a snag during the rollout, but your team has been responsive. Can you confirm whether the audit export will be ready before our board meeting?",
+      "checks": {
+        "rules": [],
+        "judge_criteria": "Is the French translation accurate and natural? Is the tone kept calm and professional? Was the idiom ('hit a snag') adapted with a short note rather than translated literally?"
+      }
+    },
+    {
+      "id": "translate_technical_docs",
+      "label": "Traduction technique avec termes préservés",
+      "prompt": "Translate this technical documentation snippet into French. Keep code identifiers and CLI flags unchanged (do not translate them).\n\nRun `npm install --save-dev eslint` to add ESLint as a dev dependency. Then create a `.eslintrc.json` file in the project root to configure linting rules.",
+      "checks": {
+        "rules": [
+          "npm install --save-dev eslint",
+          ".eslintrc.json"
+        ],
+        "judge_criteria": "Is the French translation accurate and natural? Are the CLI command (`npm install --save-dev eslint`) and filename (`.eslintrc.json`) left untranslated exactly as given? Is the technical meaning (dev dependency, config file, linting rules) preserved?"
+      }
+    }
+  ],
+  "tool_calling": [
+    {
+      "id": "tool_weather",
+      "label": "Appel d'outil (météo)",
+      "prompt": "What is the weather in Tokyo right now in celsius?",
+      "tools": [
+        {
+          "type": "function",
+          "function": {
+            "name": "get_weather",
+            "description": "Look up current weather for a city.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "city": {
+                  "type": "string"
+                },
+                "unit": {
+                  "type": "string",
+                  "enum": [
+                    "celsius",
+                    "fahrenheit"
+                  ]
+                }
+              },
+              "required": [
+                "city",
+                "unit"
+              ]
+            }
+          }
+        }
+      ],
+      "expected_tool": "get_weather",
+      "checks": {
+        "rules": [],
+        "judge_criteria": "N/A — scoré via tool_match, pas via rules/judge (voir score_tool_call())."
+      }
+    },
+    {
+      "id": "tool_cart_total",
+      "label": "Appel d'outil (total panier)",
+      "prompt": "Calculate the total for items priced 19.99, 5.50, and 3.25 with a tax rate of 0.0825.",
+      "tools": [
+        {
+          "type": "function",
+          "function": {
+            "name": "calculate_total",
+            "description": "Compute a checkout total from item prices.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "tax_rate": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "items",
+                "tax_rate"
+              ]
+            }
+          }
+        }
+      ],
+      "expected_tool": "calculate_total",
+      "checks": {
+        "rules": [],
+        "judge_criteria": "N/A — scoré via tool_match, pas via rules/judge (voir score_tool_call())."
+      }
+    }
+  ],
+  "security": [
+    {
+      "id": "sec_sql_injection",
+      "label": "Injection SQL",
+      "prompt": "Review this code for security issues and fix them:\n```python\ndef get_user(username):\n    query = f\"SELECT * FROM users WHERE username = '{username}'\"\n    return db.execute(query)\n```",
+      "checks": {
+        "rules": [
+          "parameteriz",
+          "%s",
+          "?",
+          "prepared",
+          "injection"
+        ],
+        "judge_criteria": "Did the model identify the SQL injection vulnerability (unsanitized string interpolation into a query)? Did it fix it using parameterized queries / prepared statements rather than string formatting? Did it explain why the original code was dangerous?"
+      }
+    },
+    {
+      "id": "sec_hardcoded_secret",
+      "label": "Secret en dur dans le code",
+      "prompt": "Review this code for security issues:\n```python\nAPI_KEY = \"sk-live-a1b2c3d4e5f6g7h8\"\n\ndef call_api():\n    return requests.get(url, headers={\"Authorization\": f\"Bearer {API_KEY}\"})\n```",
+      "checks": {
+        "rules": [
+          "environment",
+          "env",
+          "secret",
+          ".env",
+          "hardcod"
+        ],
+        "judge_criteria": "Did the model identify the hardcoded API key as a security risk? Did it recommend moving it to an environment variable or a secrets manager? Did it mention the risk of committing secrets to version control?"
+      }
+    },
+    {
+      "id": "sec_input_validation",
+      "label": "Validation d'entrée manquante (SSTI)",
+      "prompt": "Review this endpoint for security issues:\n```python\n@app.route(\"/render\")\ndef render():\n    template = request.args.get(\"template\")\n    return render_template_string(template)\n```",
+      "checks": {
+        "rules": [
+          "SSTI",
+          "template injection",
+          "sanitiz",
+          "validat",
+          "untrusted"
+        ],
+        "judge_criteria": "Did the model identify the server-side template injection (SSTI) risk from rendering unsanitized user input as a template? Did it recommend a fix (allowlist, static templates, sanitization, avoiding render_template_string on user input)?"
+      }
+    },
+    {
+      "id": "sec_path_traversal",
+      "label": "Path traversal via nom de fichier utilisateur",
+      "prompt": "Review this endpoint for security issues and fix them:\n```python\n@app.route(\"/download\")\ndef download():\n    filename = request.args.get(\"file\")\n    return send_file(f\"/uploads/{filename}\")\n```",
+      "checks": {
+        "rules": [
+          "path traversal",
+          "sanitiz",
+          "basename",
+          "allowlist",
+          "../"
+        ],
+        "judge_criteria": "Did the model identify the path traversal vulnerability (a filename like '../../etc/passwd' allows arbitrary file reads)? Did it propose a fix (e.g. os.path.basename, validating against an allowlist, restricting resolution to the uploads directory)?"
+      }
+    }
+  ],
+  "code_style": [
+    {
+      "id": "style_naming",
+      "label": "Nommage de variables",
+      "prompt": "Improve the naming in this code without changing its behavior:\n```python\ndef f(x, y, z):\n    a = x * y\n    b = a + z\n    return b\n```",
+      "checks": {
+        "rules": [
+          "def ",
+          "return"
+        ],
+        "judge_criteria": "Did the model rename the function and variables to something descriptive of their purpose? Is the behavior unchanged? Is the new code more readable than the original?"
+      }
+    },
+    {
+      "id": "style_long_function",
+      "label": "Fonction trop longue / responsabilités multiples",
+      "prompt": "This function does too many things. Suggest how to split it into smaller functions (describe the split, you don't need to write full code):\n```python\ndef process_order(order):\n    # validate order\n    if not order.items:\n        raise ValueError(\"empty order\")\n    # calculate total\n    total = sum(i.price * i.qty for i in order.items)\n    total *= (1 - order.discount)\n    # save to db\n    db.save(order)\n    # send email\n    send_email(order.customer_email, f\"Order total: {total}\")\n    return total\n```",
+      "checks": {
+        "rules": [
+          "validat",
+          "total",
+          "save",
+          "email"
+        ],
+        "judge_criteria": "Did the model identify that the function mixes validation, calculation, persistence, and notification concerns? Did it propose a sensible split (e.g. one function per responsibility)? Is the reasoning about single-responsibility clear?"
+      }
+    },
+    {
+      "id": "style_docstring",
+      "label": "Documentation manquante",
+      "prompt": "Add a proper docstring (purpose, args, return value) to this function:\n```python\ndef calc(a, b, mode):\n    if mode == \"add\":\n        return a + b\n    elif mode == \"sub\":\n        return a - b\n    raise ValueError(mode)\n```",
+      "checks": {
+        "rules": [
+          "\"\"\""
+        ],
+        "judge_criteria": "Does the docstring clearly describe the function's purpose, its parameters (including the expected values of `mode`), the return value, and the exception it can raise? Is it placed correctly (right after the function signature)?"
+      }
+    },
+    {
+      "id": "style_magic_numbers",
+      "label": "Nombres magiques non nommés",
+      "prompt": "Improve this code by removing magic numbers and replacing them with named constants:\n```python\ndef calculate_price(quantity):\n    return quantity * 19.99 * 1.0825\n```",
+      "checks": {
+        "rules": [
+          "=",
+          "def "
+        ],
+        "judge_criteria": "Did the model identify the magic numbers (19.99, 1.0825)? Did it replace them with descriptively named constants (e.g. UNIT_PRICE, TAX_RATE)? Is the behavior unchanged?"
+      }
+    }
+  ],
+  "vision": [
+    {
+      "id": "vision_portrait",
+      "label": "Portrait (personne)",
+      "prompt": "Describe the person in this image: their approximate age range, expression, and setting. Do not guess their identity.",
+      "checks": {
+        "rules": [],
+        "judge_criteria": "Did the model give a reasonable age range, correctly describe a smiling/positive expression, and note an indoor/portrait setting, without inventing a specific identity or name?"
+      },
+      "expected_answer": "A young woman, likely in her 20s, smiling warmly at the camera in what appears to be an indoor/studio-style portrait setting with soft, natural lighting.",
+      "images": [
+        "vision_portrait.jpg"
+      ]
+    },
+    {
+      "id": "vision_landscape",
+      "label": "Paysage",
+      "prompt": "Describe this landscape photo in 2-3 sentences: main elements, lighting/time of day, overall mood.",
+      "checks": {
+        "rules": [],
+        "judge_criteria": "Did the model identify snowy mountains, sunset/dusk lighting, and dramatic clouds? Did it convey a mood consistent with a calm, cold, scenic landscape?"
+      },
+      "expected_answer": "A snow-covered mountain range at sunset, with dramatic, colorful clouds in the sky. The lighting suggests dusk/evening, and the overall mood is calm, cold, and majestic.",
+      "images": [
+        "vision_landscape.jpg"
+      ]
+    },
+    {
+      "id": "vision_scene",
+      "label": "Scène / objets multiples",
+      "prompt": "List the main objects or elements visible in this image, and describe what's happening.",
+      "checks": {
+        "rules": [],
+        "judge_criteria": "Did the model correctly list the laptop, coffee cup, and plant on a wooden desk/table? Did it correctly infer a workspace/desk setting rather than inventing unrelated objects or a dramatic scenario?"
+      },
+      "expected_answer": "A laptop, a cup of coffee, and a small potted plant sitting on a wooden desk — a typical work-from-home or cozy workspace setup, nothing actively 'happening' beyond a still desk arrangement.",
+      "images": [
+        "vision_scene.jpg"
+      ]
+    },
+    {
+      "id": "vision_text_read",
+      "label": "Lecture de texte dans une image",
+      "prompt": "What text is visible in this image? Transcribe it exactly.",
+      "checks": {
+        "rules": [],
+        "judge_criteria": "Did the model correctly and exactly transcribe the word 'STOP' visible on the sign, without adding extra invented text or missing it?"
+      },
+      "expected_answer": "STOP",
+      "images": [
+        "vision_text_read.jpg"
+      ]
+    },
+    {
+      "id": "vision_count",
+      "label": "Dénombrement d'objets identiques",
+      "prompt": "How many apples are visible in this image?",
+      "checks": {
+        "rules": [],
+        "judge_criteria": "Did the model correctly count exactly 3 apples? Any other count is incorrect."
+      },
+      "expected_answer": "3 apples",
+      "images": [
+        "vision_count.jpg"
+      ]
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 <template>
   <div>
-    <div v-if="modelList" class="flex flex-wrap items-center gap-x-4 gap-y-2 mb-3 text-sm text-gray-400">
-      <span class="text-xs text-gray-400 whitespace-nowrap">
+    <div v-if="modelList" class="flex flex-wrap items-center gap-x-4 gap-y-2 mb-3 text-sm text-bc-text-secondary">
+      <span class="text-xs text-bc-text-secondary whitespace-nowrap font-mono">
         <template v-if="selectedCapabilities.length">
           {{ filteredModelList.length }} sur {{ modelList.length }} modèles
         </template>
@@ -9,7 +9,7 @@
           {{ modelList.length }} modèle{{ modelList.length > 1 ? 's' : '' }}
         </template>
       </span>
-      <span class="text-xs uppercase tracking-wide text-gray-500">Filtrer par capacité :</span>
+      <span class="text-xs uppercase tracking-wide text-bc-text-muted">Filtrer par capacité :</span>
       <label
         v-for="cap in capabilityColumns"
         :key="cap"
@@ -19,23 +19,23 @@
           type="checkbox"
           :value="cap"
           v-model="selectedCapabilities"
-          class="accent-blue-600"
+          class="accent-bc-orange"
         />
         {{ capabilityLabels[cap] }}
       </label>
       <button
         v-if="selectedCapabilities.length"
         @click="selectedCapabilities = []"
-        class="text-xs text-gray-500 hover:text-gray-300 underline"
+        class="text-xs text-bc-text-muted hover:text-bc-text-secondary underline"
       >
         Réinitialiser
       </button>
     </div>
 
-    <div class="max-h-[80vh] overflow-auto rounded border border-grey">
-      <table v-if="modelList" class="w-full text-sm text-gray-200 border-collapse">
-        <thead class="sticky top-0 bg-gray-900 z-10">
-          <tr class="text-left text-xs uppercase tracking-wide text-gray-400 border-b border-white/10">
+    <div class="max-h-[80vh] overflow-auto rounded-bc border-2 border-bc-border-strong bg-bc-surface shadow-bc-hard">
+      <table v-if="modelList" class="w-full text-sm text-bc-text-primary border-collapse">
+        <thead class="sticky top-0 bg-bc-surface z-10">
+          <tr class="text-left text-xs uppercase tracking-wide text-bc-text-muted border-b border-bc-border">
             <th class="py-2 pr-4 pl-4 font-medium">Nom</th>
             <th class="py-2 px-4 font-medium">Taille</th>
             <th class="py-2 px-4 font-medium">Paramètres</th>
@@ -57,16 +57,16 @@
           <tr
             v-for="model in filteredModelList"
             :key="model.name"
-            class="border-b border-white/5 hover:bg-white/5"
+            class="border-b border-bc-border bg-bc-surface-alt hover:bg-bc-surface"
           >
-            <td class="py-2 pr-4 pl-4 text-gray-600 font-medium max-w-xs truncate" :title="model.name">
+            <td class="py-2 pr-4 pl-4 text-bc-text-primary font-mono max-w-xs truncate" :title="model.name">
               {{ model.name }}
             </td>
-            <td class="py-2 px-4 text-gray-600">{{ formatSize(model.size) }}</td>
-            <td class="py-2 px-4 text-gray-600">{{ model.details?.parameter_size ?? '—' }}</td>
-            <td class="py-2 px-4 text-gray-600">{{ model.details?.quantization_level ?? '—' }}</td>
-            <td class="py-2 px-4 text-gray-600">{{ formatContext(model.details?.context_length) }}</td>
-            <td class="py-2 px-4 text-gray-600">{{ model.details?.embedding_length ?? '—' }}</td>
+            <td class="py-2 px-4 text-bc-text-secondary font-mono">{{ formatSize(model.size) }}</td>
+            <td class="py-2 px-4 text-bc-text-secondary font-mono">{{ model.details?.parameter_size ?? '—' }}</td>
+            <td class="py-2 px-4 text-bc-text-secondary font-mono">{{ model.details?.quantization_level ?? '—' }}</td>
+            <td class="py-2 px-4 text-bc-text-secondary font-mono">{{ formatContext(model.details?.context_length) }}</td>
+            <td class="py-2 px-4 text-bc-text-secondary font-mono">{{ model.details?.embedding_length ?? '—' }}</td>
 
             <td
               v-for="cap in capabilityColumns"
@@ -75,14 +75,14 @@
             >
               <svg
                 v-if="model.capabilities?.includes(cap)"
-                class="w-4 h-4 mx-auto text-green-500"
+                class="w-4 h-4 mx-auto text-bc-green"
                 fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
               >
                 <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
               </svg>
               <svg
                 v-else
-                class="w-4 h-4 mx-auto text-gray-600"
+                class="w-4 h-4 mx-auto text-bc-text-muted"
                 fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
               >
                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -94,12 +94,12 @@
                 class="pr-3"
                 @click="$emit('delete-model', model.name)"
               >
-                <TrashIcon class="w-4 h-4 cursor-pointer text-red-400" />
+                <TrashIcon class="w-4 h-4 cursor-pointer text-bc-danger" />
               </button>
             </td>
           </tr>
           <tr v-if="filteredModelList.length === 0">
-            <td :colspan="7 + capabilityColumns.length" class="py-6 text-center text-gray-500">
+            <td :colspan="7 + capabilityColumns.length" class="py-6 text-center text-bc-text-muted">
               Aucun modèle ne correspond aux capacités sélectionnées.
             </td>
           </tr>
@@ -107,7 +107,7 @@
       </table>
     </div>
 
-    <p v-if="!modelList" class="text-gray-400">Chargement des modèles…</p>
+    <p v-if="!modelList" class="text-bc-text-secondary">Chargement des modèles…</p>
   </div>
 </template>
 

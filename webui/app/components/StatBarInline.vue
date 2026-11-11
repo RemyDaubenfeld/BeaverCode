@@ -1,7 +1,7 @@
 <template>
-  <div class="h-4 w-16 border border-white/10 bg-gray-800 overflow-hidden">
+  <div class="h-4 w-16 rounded-full border border-bc-border bg-bc-surface-alt overflow-hidden">
     <div
-      class="h-full transition-all duration-300 ease-out"
+      class="h-full rounded-full transition-all duration-300 ease-out"
       :class="barColor"
       :style="{ width: clamped + '%' }"
     />
@@ -21,8 +21,8 @@ const clamped = computed(() => {
 
 // vert -> orange -> rouge selon la charge, supprime si tu veux rester en vert fixe
 const barColor = computed(() => {
-  if (clamped.value >= 90) return 'bg-red-500'
-  if (clamped.value >= 70) return 'bg-orange-400'
-  return 'bg-green-500'
+  if (clamped.value >= 90) return 'bg-bc-danger'
+  if (clamped.value >= 70) return 'bg-bc-orange'
+  return 'bg-bc-green'
 })
 </script>

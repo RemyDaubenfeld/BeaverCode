@@ -5,14 +5,14 @@
         <div class="flex justify-start mt-6">
           <button
             @click="showLibrary = true"
-            class="flex items-center justify-center px-3 py-1.5 text-sm rounded cursor-pointer bg-blue-600/80 hover:bg-blue-600 text-white"
+            class="flex items-center justify-center px-3 py-1.5 text-sm font-semibold rounded-bc cursor-pointer border-2 border-bc-border-strong shadow-bc-hard-sm transition-transform duration-75 active:translate-x-0.5 active:translate-y-0.5 active:shadow-none bg-bc-orange text-bc-ink"
           >
             <MagnifyingGlassCircleIcon class="w-4 h-4 cursor-pointer mr-2"/>
             Parcourir la bibliothèque
           </button>
           <button
             @click="addModel = true"
-            class="flex items-center justify-center ml-5 px-3 py-1.5 text-sm rounded cursor-pointer bg-blue-600/80 hover:bg-blue-600 text-white"
+            class="flex items-center justify-center ml-5 px-3 py-1.5 text-sm font-semibold rounded-bc cursor-pointer border-2 border-bc-border-strong shadow-bc-hard-sm transition-transform duration-75 active:translate-x-0.5 active:translate-y-0.5 active:shadow-none bg-bc-orange text-bc-ink"
           >
             <CloudArrowDownIcon class="w-4 h-4 cursor-pointer mr-2" />
             Importer un modèle
@@ -20,7 +20,7 @@
 
           <button
             @click="createModel = true"
-            class="flex items-center justify-center ml-5 px-3 py-1.5 text-sm rounded cursor-pointer bg-blue-600/80 hover:bg-blue-600 text-white"
+            class="flex items-center justify-center ml-5 px-3 py-1.5 text-sm font-semibold rounded-bc cursor-pointer border-2 border-bc-border-strong shadow-bc-hard-sm transition-transform duration-75 active:translate-x-0.5 active:translate-y-0.5 active:shadow-none bg-bc-green text-bc-ink"
           >
            <PlusCircleIcon class="w-4 h-4 cursor-pointer mr-2" />
             Créer un modèle
@@ -45,7 +45,7 @@
           @create-success="onPullSuccess"
         />
 
-        <p v-if="deleteError" class="mt-3 text-sm text-red-400">{{ deleteError }}</p>
+        <p v-if="deleteError" class="mt-3 text-sm text-bc-danger">{{ deleteError }}</p>
     </div>
 </template>
 

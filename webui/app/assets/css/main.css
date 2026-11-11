@@ -1,1 +1,58 @@
 @import "tailwindcss";
+
+@theme {
+  /* Brand */
+  --color-bc-orange: #C2662B;
+  --color-bc-orange-dark: #8A4620;
+  --color-bc-orange-light: #E6A671;
+  --color-bc-orange-tint: #2A1D12;
+
+  --color-bc-green: #05F59A;
+  --color-bc-green-dark: #0E8F5F;
+  --color-bc-green-tint: #0C2620;
+
+  --color-bc-ink: #0B0A08;
+
+  /* Interface neutrals (warm dark) */
+  --color-bc-bg: #14120F;
+  --color-bc-surface: #1E1B16;
+  --color-bc-surface-alt: #262119;
+  --color-bc-border: #3A342B;
+  --color-bc-border-strong: #0B0A08;
+
+  --color-bc-text-primary: #F5F1EA;
+  --color-bc-text-secondary: #A69C8D;
+  --color-bc-text-muted: #6B6255;
+  --color-bc-paper: #F5F1EA;
+
+  /* Semantic */
+  --color-bc-success: #05F59A;
+  --color-bc-warning: #E0A526;
+  --color-bc-warning-dark: #6b4f14;
+  --color-bc-warning-tint: #2A2210;
+  --color-bc-danger: #D6543C;
+  --color-bc-danger-dark: #5c2418;
+  --color-bc-danger-tint: #2A1712;
+  --color-bc-info: #3FA8A0;
+
+  /* Type */
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Shape */
+  --radius-bc: 10px;
+  --shadow-bc-hard: 4px 4px 0 var(--color-bc-ink);
+  --shadow-bc-hard-sm: 2px 2px 0 var(--color-bc-ink);
+}
+
+body {
+  background: var(--color-bc-bg);
+  color: var(--color-bc-text-primary);
+  font-family: var(--font-body);
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+}

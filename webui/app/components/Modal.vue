@@ -1,14 +1,17 @@
 <template>
   <Teleport to="body">
     <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60" @click.self="emit('close')">
-      <div class="w-full max-w-lg max-h-[80vh] overflow-y-auto rounded-lg border border-white/10 bg-gray-900 p-4 text-gray-200 shadow-xl">
+      <div class="w-full max-h-[85vh] overflow-y-auto rounded-bc border-2 border-bc-border-strong bg-bc-surface p-4 text-bc-text-primary shadow-bc-hard" :class="maxWidthClass">
         <div class="flex items-center justify-between mb-3">
-          <h2 class="text-sm font-semibold uppercase tracking-wide text-gray-400">
+          <h2 class="font-display text-sm font-semibold uppercase tracking-wide text-bc-text-secondary">
             <slot name="header" />
           </h2>
-          <button @click="emit('close')" class="text-gray-400 hover:text-white">
-            <XMarkIcon class="w-5 h-5" />
-          </button>
+          <div class="flex items-center gap-1 shrink-0">
+            <slot name="actions" />
+            <button @click="emit('close')" class="text-bc-text-secondary hover:text-bc-text-primary">
+              <XMarkIcon class="w-5 h-5" />
+            </button>
+          </div>
         </div>
         <slot />
       </div>
@@ -19,7 +22,12 @@
 <script setup>
 import { XMarkIcon } from '@heroicons/vue/24/outline'
 
+const props = defineProps({
+  size: { type: String, default: 'md' }, // 'md' | 'xl'
+})
 const emit = defineEmits(['close'])
+
+const maxWidthClass = computed(() => (props.size === 'xl' ? 'max-w-6xl' : 'max-w-lg'))
 
 function onKeydown(e) {
   if (e.key === 'Escape') emit('close')

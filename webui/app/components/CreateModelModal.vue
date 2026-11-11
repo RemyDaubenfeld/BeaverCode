@@ -4,7 +4,7 @@
 
     <button
       @click="createModelfile = true"
-      class="mb-4 px-3 py-1.5 text-sm rounded cursor-pointer bg-white/10 hover:bg-white/20 text-gray-400"
+      class="mb-4 px-3 py-1.5 text-sm rounded-bc cursor-pointer bg-bc-surface text-bc-orange-light border-2 border-bc-orange shadow-bc-hard-sm transition-transform duration-75 active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
     >
       + Créer un modelfile
     </button>
@@ -15,10 +15,10 @@
     />
 
     <div class="space-y-2 mb-4">
-      <label class="block text-sm text-gray-400">Choisir un modelfile</label>
+      <label class="block text-sm text-bc-text-secondary">Choisir un modelfile</label>
       <select
         v-model="selectedModelfile"
-        class="w-full px-3 py-2 rounded bg-white/5 border border-white/10 text-sm text-gray-400 focus:outline-none focus:border-white/30"
+        class="w-full px-3 py-2 rounded-bc bg-bc-surface-alt border border-bc-border text-sm text-bc-text-secondary focus:outline-none focus:border-bc-orange"
       >
         <option value="" disabled>
           {{ modelfiles.length ? 'Sélectionner un modelfile…' : 'Aucun modelfile trouvé' }}
@@ -30,10 +30,10 @@
     </div>
 
     <div class="space-y-2 mb-4">
-      <label class="block text-sm text-gray-400">Choisir un modèle de base</label>
+      <label class="block text-sm text-bc-text-secondary">Choisir un modèle de base</label>
       <select
         v-model="selectedBaseModel"
-        class="w-full px-3 py-2 rounded bg-white/5 border border-white/10 text-sm text-gray-400 focus:outline-none focus:border-white/30"
+        class="w-full px-3 py-2 rounded-bc bg-bc-surface-alt border border-bc-border text-sm text-bc-text-secondary focus:outline-none focus:border-bc-orange"
       >
         <option value="" disabled>
           {{ modelList?.length ? 'Sélectionner un modèle…' : 'Aucun modèle installé' }}
@@ -44,23 +44,23 @@
       </select>
     </div>
 
-    <label class="block text-sm text-gray-400 mb-4">
+    <label class="block text-sm text-bc-text-secondary mb-4">
       Nom du modèle
       <input
         v-model="modelName"
         type="text"
         placeholder="Nom du modèle (ex: mon-modele-custom)"
-        class="mt-1 w-full px-3 py-2 rounded bg-white/5 border border-white/10 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-white/30"
+        class="mt-1 w-full px-3 py-2 rounded-bc bg-bc-surface-alt border border-bc-border text-sm text-bc-text-primary placeholder-bc-text-muted focus:outline-none focus:border-bc-orange"
       />
     </label>
 
-    <p v-if="validationError" class="text-sm text-red-400 mb-3">{{ validationError }}</p>
-    <p v-if="createError" class="text-sm text-red-400 mb-3">{{ createError }}</p>
+    <p v-if="validationError" class="text-sm text-bc-danger mb-3">{{ validationError }}</p>
+    <p v-if="createError" class="text-sm text-bc-danger mb-3">{{ createError }}</p>
 
     <button
       @click="submit"
       :disabled="creating"
-      class="w-full px-3 py-2 text-sm rounded bg-blue-600/80 hover:bg-blue-600 disabled:opacity-40 disabled:cursor-not-allowed text-white"
+      class="w-full px-3 py-2 text-sm rounded-bc font-display font-semibold bg-bc-orange text-bc-ink border-2 border-bc-border-strong shadow-bc-hard-sm transition-transform duration-75 active:translate-x-0.5 active:translate-y-0.5 active:shadow-none disabled:bg-bc-surface-alt disabled:text-bc-text-muted disabled:border-bc-border disabled:shadow-none disabled:cursor-not-allowed"
     >
       {{ creating ? statusLabel : 'Créer' }}
     </button>

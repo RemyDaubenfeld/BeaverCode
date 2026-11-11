@@ -43,3 +43,36 @@ export const deleteModel = async (name: string): Promise<void> => {
     body: { model: name },
   });
 };
+
+export interface LoadedModelInfo {
+  name: string
+  size_vram: number
+  expires_at: string
+  context_length?: number
+}
+
+/**
+ * Liste tous les modèles actuellement chargés en mémoire (VRAM/RAM) via `/api/ps`.
+ */
+export const getLoadedModels = async (): Promise<LoadedModelInfo[]> => {
+  try {
+    const response = await $fetch<{ models: LoadedModelInfo[] }>(
+      'http://localhost:11434/api/ps'
+    );
+    return response.models ?? [];
+  } catch (error) {
+    console.error('Erreur lors de la récupération des modèles chargés:', error);
+    return [];
+  }
+};
+
+/**
+ * Décharge un modèle de la mémoire immédiatement (`keep_alive: 0` sur `/api/generate`,
+ * mécanisme officiel d'Ollama pour forcer un unload sans attendre l'expiration naturelle).
+ */
+export const unloadModel = async (name: string): Promise<void> => {
+  await $fetch('http://localhost:11434/api/generate', {
+    method: 'POST',
+    body: { model: name, keep_alive: 0 },
+  });
+};

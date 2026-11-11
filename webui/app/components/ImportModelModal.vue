@@ -4,12 +4,12 @@
 
     
     <div class="space-y-2 mb-3">
-      <label class="flex items-center gap-2 text-sm text-gray-300 cursor-pointer select-none">
+      <label class="flex items-center gap-2 text-sm text-bc-text-secondary cursor-pointer select-none">
         <input
           type="checkbox"
           :checked="mode === 'url'"
           @change="setMode('url')"
-          class="accent-blue-600"
+          class="accent-bc-orange"
         />
         Depuis une URL
       </label>
@@ -18,17 +18,17 @@
         type="text"
         :disabled="mode !== 'url'"
         placeholder="https://huggingface.co/.../fichier.gguf"
-        class="w-full px-3 py-2 rounded bg-white/5 border border-white/10 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-white/30 disabled:opacity-40"
+        class="w-full px-3 py-2 rounded bg-bc-surface-alt border border-bc-border text-sm text-bc-text-primary placeholder-bc-text-muted focus:outline-none focus:border-bc-orange disabled:opacity-40"
       />
     </div>
 
     <div class="space-y-2 mb-4">
-      <label class="flex items-center gap-2 text-sm text-gray-300 cursor-pointer select-none">
+      <label class="flex items-center gap-2 text-sm text-bc-text-secondary cursor-pointer select-none">
         <input
           type="checkbox"
           :checked="mode === 'file'"
           @change="setMode('file')"
-          class="accent-blue-600"
+          class="accent-bc-orange"
         />
         Fichier local
       </label>
@@ -37,11 +37,11 @@
           type="button"
           @click="fileInput?.click()"
           :disabled="mode !== 'file'"
-          class="shrink-0 px-3 py-1.5 text-xs rounded bg-white/10 hover:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed text-gray-200"
+          class="shrink-0 px-3 py-1.5 text-xs rounded border-2 border-bc-border-strong bg-bc-surface text-bc-text-secondary shadow-bc-hard-sm transition-transform duration-75 hover:bg-bc-surface-alt active:translate-x-0.5 active:translate-y-0.5 active:shadow-none disabled:border-bc-border disabled:bg-bc-surface-alt disabled:text-bc-text-muted disabled:shadow-none disabled:opacity-100 disabled:cursor-not-allowed"
         >
           Parcourir…
         </button>
-        <span class="text-xs text-gray-400 truncate">
+        <span class="text-xs text-bc-text-muted truncate">
           {{ selectedFile?.name ?? 'Aucun fichier sélectionné' }}
         </span>
         <input
@@ -55,19 +55,19 @@
     </div>
 
     <div class="space-y-2 mb-4">
-      <label class="flex items-center gap-2 text-sm text-gray-300 cursor-pointer select-none">
+      <label class="flex items-center gap-2 text-sm text-bc-text-secondary cursor-pointer select-none">
         <input
           type="checkbox"
           :checked="mode === 'existing'"
           @change="setMode('existing')"
-          class="accent-blue-600"
+          class="accent-bc-orange"
         />
         Fichier déjà présent dans ~/.ollama/gguf
       </label>
       <select
         v-model="selectedExisting"
         :disabled="mode !== 'existing'"
-        class="w-full px-3 py-2 rounded bg-white/5 border border-white/10 text-sm text-gray-200 focus:outline-none focus:border-white/30 disabled:opacity-40"
+        class="w-full px-3 py-2 rounded bg-bc-surface-alt border border-bc-border text-sm text-bc-text-primary focus:outline-none focus:border-bc-orange disabled:opacity-40"
       >
         <option value="" disabled>
           {{ existingFiles.length ? 'Sélectionner un fichier…' : 'Aucun fichier .gguf trouvé' }}
@@ -79,24 +79,24 @@
     </div>
 
     <div>
-      <label>Nom du modèle</label>
+      <label class="text-sm text-bc-text-secondary">Nom du modèle</label>
       <input
         v-model="modelName"
         type="text"
         placeholder="Nom du modèle (ex: mon-modele-custom)"
-        class="w-full mb-4 px-3 py-2 rounded bg-white/5 border border-white/10 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-white/30"
+        class="w-full mb-4 px-3 py-2 rounded bg-bc-surface-alt border border-bc-border text-sm text-bc-text-primary placeholder-bc-text-muted focus:outline-none focus:border-bc-orange"
       />
     </div>
- 
 
 
-    <p v-if="validationError" class="text-sm text-red-400 mb-3">{{ validationError }}</p>
-    <p v-if="importError" class="text-sm text-red-400 mb-3">{{ importError }}</p>
+
+    <p v-if="validationError" class="text-sm text-bc-danger mb-3">{{ validationError }}</p>
+    <p v-if="importError" class="text-sm text-bc-danger mb-3">{{ importError }}</p>
 
     <button
       @click="submit"
       :disabled="importing"
-      class="w-full px-3 py-2 text-sm rounded bg-blue-600/80 hover:bg-blue-600 disabled:opacity-40 disabled:cursor-not-allowed text-white"
+      class="w-full px-3 py-2 text-sm rounded border-2 border-bc-border-strong bg-bc-orange text-bc-ink shadow-bc-hard-sm transition-transform duration-75 hover:bg-bc-orange-dark active:translate-x-0.5 active:translate-y-0.5 active:shadow-none disabled:border-bc-border disabled:bg-bc-surface-alt disabled:text-bc-text-muted disabled:shadow-none disabled:opacity-100 disabled:cursor-not-allowed"
     >
       {{ importing ? `Import… ${progress}%` : 'Importer' }}
     </button>

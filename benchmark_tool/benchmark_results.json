@@ -1,0 +1,36 @@
+{
+  "generated_at": "2026-08-24T11:34:12.414275",
+  "ollama_host": "http://localhost:11434",
+  "models": [
+    {
+      "model": "qwen2.5-coder:1.5b",
+      "detected_types": [
+        "chat",
+        "instruction_following",
+        "code"
+      ],
+      "judge_model": "benchmark-judge:latest",
+      "timestamp": "2026-08-24T11:34:12.413945",
+      "avg_score": 4.0,
+      "avg_tokens_per_sec": 81.5,
+      "total_tests": 1,
+      "verdict": "Bon",
+      "tests": [
+        {
+          "test_id": "sum_release_notes",
+          "label": "Résumé structuré",
+          "category": "summarization",
+          "score": 4,
+          "rule_score": 5,
+          "judge_score": 4,
+          "strengths": "The response captures three distinct points accurately and includes a concise takeaway.",
+          "weaknesses": "Could be more precise in phrasing to avoid redundancy.",
+          "tokens": 75,
+          "tokens_per_sec": 105.8,
+          "elapsed_sec": 0.92,
+          "response_preview": "**Summary:**\n- Version 3.2 enhances performance with a 18% startup time improvement.\n- It optimizes memory usage in the image pipeline by reducing memory consumption.\n- Addresses a race condition during sync operations.\n- Introduces a new admin audit export feature.\n- Deprecates a legacy CSV import ..."
+        }
+      ]
+    }
+  ]
+}
