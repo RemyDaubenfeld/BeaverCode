@@ -36,12 +36,42 @@
       <table v-if="modelList" class="w-full text-sm text-bc-text-primary border-collapse">
         <thead class="sticky top-0 bg-bc-surface z-10">
           <tr class="text-left text-xs uppercase tracking-wide text-bc-text-muted border-b border-bc-border">
-            <th class="py-2 pr-4 pl-4 font-medium">Nom</th>
-            <th class="py-2 px-4 font-medium">Taille</th>
-            <th class="py-2 px-4 font-medium">Paramètres</th>
+            <th class="py-2 pr-4 pl-4 font-medium">
+              <button class="inline-flex items-center gap-1 uppercase tracking-wide hover:text-bc-text-secondary cursor-pointer" @click="toggleSort('name')">
+                Nom <span class="font-mono" :class="sortKey === 'name' ? 'text-bc-orange' : 'text-bc-border-strong'">{{ sortIndicator('name') }}</span>
+              </button>
+            </th>
+            <th class="py-2 px-4 font-medium">
+              <button class="inline-flex items-center gap-1 uppercase tracking-wide hover:text-bc-text-secondary cursor-pointer" @click="toggleSort('size')">
+                Taille <span class="font-mono" :class="sortKey === 'size' ? 'text-bc-orange' : 'text-bc-border-strong'">{{ sortIndicator('size') }}</span>
+              </button>
+            </th>
+            <th class="py-2 px-4 font-medium" title="Mémoire estimée pour charger le modèle (poids + KV cache + surcoût), comparée à la VRAM utilisable">
+              <button class="inline-flex items-center gap-1 uppercase tracking-wide hover:text-bc-text-secondary cursor-pointer" @click="toggleSort('vram')">
+                VRAM <span class="font-mono" :class="sortKey === 'vram' ? 'text-bc-orange' : 'text-bc-border-strong'">{{ sortIndicator('vram') }}</span>
+              </button>
+            </th>
+            <th class="py-2 px-4 font-medium">
+              <button class="inline-flex items-center gap-1 uppercase tracking-wide hover:text-bc-text-secondary cursor-pointer" @click="toggleSort('params')">
+                Paramètres <span class="font-mono" :class="sortKey === 'params' ? 'text-bc-orange' : 'text-bc-border-strong'">{{ sortIndicator('params') }}</span>
+              </button>
+            </th>
             <th class="py-2 px-4 font-medium">Quantification</th>
-            <th class="py-2 px-4 font-medium">Contexte</th>
-            <th class="py-2 px-4 font-medium">Embedding</th>
+            <th class="py-2 px-4 font-medium">
+              <button class="inline-flex items-center gap-1 uppercase tracking-wide hover:text-bc-text-secondary cursor-pointer" @click="toggleSort('context')">
+                Contexte <span class="font-mono" :class="sortKey === 'context' ? 'text-bc-orange' : 'text-bc-border-strong'">{{ sortIndicator('context') }}</span>
+              </button>
+            </th>
+            <th class="py-2 px-4 font-medium">
+              <button class="inline-flex items-center gap-1 uppercase tracking-wide hover:text-bc-text-secondary cursor-pointer" @click="toggleSort('embedding')">
+                Embedding <span class="font-mono" :class="sortKey === 'embedding' ? 'text-bc-orange' : 'text-bc-border-strong'">{{ sortIndicator('embedding') }}</span>
+              </button>
+            </th>
+            <th class="py-2 px-4 font-medium">
+              <button class="inline-flex items-center gap-1 uppercase tracking-wide hover:text-bc-text-secondary cursor-pointer" @click="toggleSort('score')">
+                Benchmark <span class="font-mono" :class="sortKey === 'score' ? 'text-bc-orange' : 'text-bc-border-strong'">{{ sortIndicator('score') }}</span>
+              </button>
+            </th>
             <th
               v-for="cap in capabilityColumns"
               :key="cap"
@@ -59,14 +89,30 @@
             :key="model.name"
             class="border-b border-bc-border bg-bc-surface-alt hover:bg-bc-surface"
           >
-            <td class="py-2 pr-4 pl-4 text-bc-text-primary font-mono max-w-xs truncate" :title="model.name">
+            <td class="py-2 pr-4 pl-4 text-bc-text-primary font-mono max-w-56 truncate" :title="model.name">
               {{ model.name }}
             </td>
-            <td class="py-2 px-4 text-bc-text-secondary font-mono">{{ formatSize(model.size) }}</td>
+            <td class="py-2 px-4 text-bc-text-secondary font-mono whitespace-nowrap">{{ formatSize(model.size) }}</td>
+            <td class="py-2 px-4 whitespace-nowrap">
+              <VramFitBadge
+                :estimate="model.memory_estimate"
+                :details="memoryDetails(model.memory_estimate)"
+              />
+            </td>
             <td class="py-2 px-4 text-bc-text-secondary font-mono">{{ model.details?.parameter_size ?? '—' }}</td>
             <td class="py-2 px-4 text-bc-text-secondary font-mono">{{ model.details?.quantization_level ?? '—' }}</td>
             <td class="py-2 px-4 text-bc-text-secondary font-mono">{{ formatContext(model.details?.context_length) }}</td>
             <td class="py-2 px-4 text-bc-text-secondary font-mono">{{ model.details?.embedding_length ?? '—' }}</td>
+            <td class="py-2 px-4 font-mono">
+              <span
+                v-if="scores[model.name]"
+                :class="scoreColorClass(scores[model.name].avg_score)"
+                :title="`${scores[model.name].total_tests} test${scores[model.name].total_tests > 1 ? 's' : ''} · ${scores[model.name].avg_tokens_per_sec} tok/s (contexte 8192)`"
+              >
+                {{ scores[model.name].avg_score.toFixed(1) }}/5
+              </span>
+              <span v-else class="text-bc-text-muted">—</span>
+            </td>
 
             <td
               v-for="cap in capabilityColumns"
@@ -99,7 +145,7 @@
             </td>
           </tr>
           <tr v-if="filteredModelList.length === 0">
-            <td :colspan="7 + capabilityColumns.length" class="py-6 text-center text-bc-text-muted">
+            <td :colspan="9 + capabilityColumns.length" class="py-6 text-center text-bc-text-muted">
               Aucun modèle ne correspond aux capacités sélectionnées.
             </td>
           </tr>
@@ -116,6 +162,13 @@ import { TrashIcon } from '@heroicons/vue/24/solid'
 defineEmits(['delete-model'])
 
 const { modelList } = useModels()
+const { scoreColorClass } = useBenchmarkFormat()
+
+// notes du comparatif de benchmark (leaderboard.json), indexées par nom de modèle
+const { data: comparison } = useFetch('/api/benchmark/comparison', { default: () => [] })
+const scores = computed(() =>
+  Object.fromEntries((comparison.value ?? []).map((entry) => [entry.model, entry]))
+)
 
 // capacités qu'on veut afficher en colonnes, avec un label court (icône/lettre)
 const capabilityLabels = {
@@ -131,18 +184,86 @@ const capabilityColumns = Object.keys(capabilityLabels)
 // capacités cochées dans le filtre — un modèle est affiché s'il possède AU MOINS UNE des capacités sélectionnées
 const selectedCapabilities = ref([])
 
+// tri par colonne : un clic trie la colonne (croissant), un deuxième inverse, un troisième revient à l'ordre d'Ollama
+const sortKey = ref(null)
+const sortDir = ref('asc')
+
+const sortValues = {
+  name: (m) => m.name?.toLowerCase(),
+  size: (m) => m.size,
+  vram: (m) => m.memory_estimate?.total_bytes,
+  params: (m) => parseParameterSize(m.details?.parameter_size),
+  context: (m) => m.details?.context_length,
+  embedding: (m) => m.details?.embedding_length,
+  score: (m) => scores.value[m.name]?.avg_score,
+}
+
+function toggleSort(key) {
+  if (sortKey.value !== key) {
+    sortKey.value = key
+    sortDir.value = 'asc'
+  } else if (sortDir.value === 'asc') {
+    sortDir.value = 'desc'
+  } else {
+    sortKey.value = null
+  }
+}
+
+function sortIndicator(key) {
+  if (sortKey.value !== key) return '↕'
+  return sortDir.value === 'asc' ? '↑' : '↓'
+}
+
+// "3.1B" → 3.1e9, "475.29M" → 4.7529e8
+function parseParameterSize(value) {
+  const match = /^([\d.]+)\s*([KMBT]?)$/i.exec(value?.trim() ?? '')
+  if (!match) return null
+  const units = { '': 1, K: 1e3, M: 1e6, B: 1e9, T: 1e12 }
+  return parseFloat(match[1]) * units[match[2].toUpperCase()]
+}
+
 const filteredModelList = computed(() => {
   if (!modelList.value) return []
-  if (selectedCapabilities.value.length === 0) return modelList.value
-  return modelList.value.filter((model) =>
-    selectedCapabilities.value.some((cap) => model.capabilities?.includes(cap))
-  )
+  let list = selectedCapabilities.value.length === 0
+    ? modelList.value
+    : modelList.value.filter((model) =>
+        selectedCapabilities.value.some((cap) => model.capabilities?.includes(cap))
+      )
+
+  if (sortKey.value) {
+    const getValue = sortValues[sortKey.value]
+    const dir = sortDir.value === 'asc' ? 1 : -1
+    list = [...list].sort((a, b) => {
+      const va = getValue(a)
+      const vb = getValue(b)
+      // valeurs manquantes toujours en bas, quel que soit le sens
+      if (va == null && vb == null) return 0
+      if (va == null) return 1
+      if (vb == null) return -1
+      if (typeof va === 'string') return va.localeCompare(vb) * dir
+      return (va - vb) * dir
+    })
+  }
+  return list
 })
 
 function formatSize(bytes) {
   if (bytes == null) return '—'
   const go = bytes / 1024 ** 3
   return `${go.toFixed(1)} Go`
+}
+
+// lignes de détail de l'info-bulle VRAM
+function memoryDetails(estimate) {
+  if (!estimate) return []
+  const go = (b) => `${(b / 1024 ** 3).toFixed(1)} Go`
+  return [
+    `Poids : ${go(estimate.weights_bytes)}`,
+    estimate.kv_cache_bytes != null
+      ? `KV cache (${formatContext(estimate.num_ctx)} tokens) : ${go(estimate.kv_cache_bytes)}`
+      : 'KV cache : non estimable pour cette architecture',
+    `Marge buffers (5 %) : ${go(estimate.overhead_bytes)}`,
+  ]
 }
 
 function formatContext(tokens) {

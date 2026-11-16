@@ -99,11 +99,13 @@ export const refreshLibrary = async (): Promise<LibraryRefreshResponse> => {
 /**
  * Lance un pull de modèle sur Ollama et retourne la réponse HTTP brute
  * (streaming NDJSON) telle quelle, pour relais direct par le handler Nitro.
+ * `signal` permet d'interrompre le pull côté Ollama (annulation depuis l'UI).
  */
-export const pullModelStream = (model: string): Promise<Response> => {
+export const pullModelStream = (model: string, signal?: AbortSignal): Promise<Response> => {
   return fetch(`${OLLAMA_URL}/api/pull`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ model, stream: true }),
+    signal,
   });
 };

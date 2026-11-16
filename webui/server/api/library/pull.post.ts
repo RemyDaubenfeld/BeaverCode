@@ -6,7 +6,12 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Paramètre "model" requis' });
   }
 
-  const ollamaResponse = await pullModelStream(model);
+  // Si le client coupe la connexion (bouton Annuler), on coupe aussi la requête vers Ollama,
+  // qui arrête alors le téléchargement (les blobs partiels sont conservés pour une reprise).
+  const controller = new AbortController();
+  event.node.res.on('close', () => controller.abort());
+
+  const ollamaResponse = await pullModelStream(model, controller.signal);
 
   if (!ollamaResponse.ok || !ollamaResponse.body) {
     throw createError({

@@ -25,6 +25,8 @@
            <PlusCircleIcon class="w-4 h-4 cursor-pointer mr-2" />
             Créer un modèle
           </button>
+
+          <PullProgressList class="flex-1 ml-5 min-w-0" />
         </div>
 
         <LibrarySearchModal

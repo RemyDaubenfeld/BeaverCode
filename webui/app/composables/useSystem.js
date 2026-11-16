@@ -8,6 +8,7 @@ export function useSystem() {
   async function load() {
     if (cpuBrand.value) return // déjà chargé, config statique
     const system = await $fetch('/api/system')
+    console.log(system)
     cpuBrand.value = system.cpu.brand
     cpuCores.value = system.cpu.cores
     cpuPhysicalCores.value = system.cpu.physicalCores
