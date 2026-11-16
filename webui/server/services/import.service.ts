@@ -1,14 +1,14 @@
 import { basename, join } from 'node:path';
 import { homedir } from 'node:os';
-import { mkdir, readdir, stat, writeFile } from 'node:fs/promises';
-import { createReadStream, createWriteStream } from 'node:fs';
-import { finished } from 'node:stream/promises';
+import { mkdir, readdir, readFile, stat, unlink, writeFile } from 'node:fs/promises';
+import { createReadStream } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { Readable } from 'node:stream';
+import { getOllamaUrl } from './settings.service';
 
-const OLLAMA_URL = 'http://localhost:11434';
-// ~/.ollama/modelfiles reste dédié aux Modelfiles (déjà utilisé par models/setup_hf_models.sh) ;
+// ~/.ollama/modelfiles reste dédié aux presets de paramètres (modelfile.service.ts) ;
 // les .gguf importés depuis la WebUI vivent dans un dossier séparé.
+// Les modèles HuggingFace ne passent plus par ici : pull direct hf.co/… (library.service.ts).
 const GGUF_DIR = join(homedir(), '.ollama', 'gguf');
 
 const ensureGgufDir = async () => {
@@ -31,23 +31,70 @@ export const saveUploadedGguf = async (filename: string, data: Buffer): Promise<
 export interface ExistingGguf {
   filename: string
   size: number
+  // modèles Ollama dont les poids ont exactement la taille de ce fichier → le fichier est déjà importé
+  // (Ollama en garde sa propre copie dans ses blobs) et peut être supprimé sans casser ces modèles
+  imported_by: string[]
+}
+
+const MODELS_DIR = process.env.OLLAMA_MODELS || join(homedir(), '.ollama', 'models');
+
+/**
+ * Taille des poids (couche `application/vnd.ollama.image.model`) → modèles qui les utilisent, lu dans les
+ * manifestes d'Ollama : <MODELS_DIR>/manifests/<registre>/<espace>/<modèle>/<tag> (un JSON par modèle).
+ *
+ * On compare par TAILLE et non par empreinte : à l'import, Ollama réécrit l'en-tête du GGUF (ordre des
+ * métadonnées), le blob n'a donc pas la même empreinte SHA-256 que le fichier d'origine — vérifié sur
+ * gemma4-heretic.Q4_K_M.gguf : même taille, 500 octets d'en-tête différents sur 16,8 Go, poids identiques.
+ * À l'octet près sur des fichiers de plusieurs Go, la taille suffit à identifier le fichier.
+ */
+async function modelLayerSizes(): Promise<Map<number, string[]>> {
+  const bySize = new Map<number, string[]>();
+  const root = join(MODELS_DIR, 'manifests');
+  const list = (dir: string) => readdir(dir).catch(() => [] as string[]);
+
+  for (const registry of await list(root)) {
+    for (const namespace of await list(join(root, registry))) {
+      for (const model of await list(join(root, registry, namespace))) {
+        for (const tag of await list(join(root, registry, namespace, model))) {
+          try {
+            const manifest = JSON.parse(await readFile(join(root, registry, namespace, model, tag), 'utf-8'));
+            const weights = manifest.layers?.find((l: any) => l.mediaType === 'application/vnd.ollama.image.model');
+            if (!weights) continue;
+            // nom tel qu'Ollama l'affiche : « x:tag » pour la bibliothèque officielle, sinon avec le chemin
+            const name = registry === 'registry.ollama.ai'
+              ? `${namespace === 'library' ? '' : `${namespace}/`}${model}:${tag}`
+              : `${registry}/${namespace}/${model}:${tag}`;
+            bySize.set(weights.size, [...(bySize.get(weights.size) ?? []), name]);
+          } catch {
+            // manifeste illisible : ignoré
+          }
+        }
+      }
+    }
+  }
+  return bySize;
 }
 
 /**
- * Liste les .gguf déjà présents dans GGUF_DIR — pour permettre de créer un modèle
- * sans re-transférer un fichier déjà téléchargé/importé précédemment.
+ * Liste les .gguf présents dans GGUF_DIR — pour créer un modèle sans re-transférer un fichier, et
+ * signaler ceux déjà importés (doublons de ce qu'Ollama stocke déjà dans ses blobs).
  */
 export const listExistingGguf = async (): Promise<ExistingGguf[]> => {
   await ensureGgufDir();
-  const entries = await readdir(GGUF_DIR);
+  const [entries, layerSizes] = await Promise.all([readdir(GGUF_DIR), modelLayerSizes()]);
   const ggufFiles = entries.filter((f) => f.toLowerCase().endsWith('.gguf'));
-  const withSizes = await Promise.all(
+  return Promise.all(
     ggufFiles.map(async (filename) => {
       const { size } = await stat(join(GGUF_DIR, filename));
-      return { filename, size };
+      return { filename, size, imported_by: (layerSizes.get(size) ?? []).sort() };
     })
   );
-  return withSizes;
+};
+
+/** Supprime un .gguf de GGUF_DIR (les modèles déjà importés n'en dépendent pas, cf. listExistingGguf). */
+export const deleteExistingGguf = async (filename: string): Promise<void> => {
+  // basename() : le nom vient du client, pas de sortie de GGUF_DIR possible (« ../ »)
+  await unlink(join(GGUF_DIR, basename(filename)));
 };
 
 /**
@@ -61,51 +108,6 @@ export const resolveExistingGguf = async (filename: string): Promise<string> => 
   await stat(path); // lève si le fichier n'existe pas
   return path;
 };
-
-/**
- * Télécharge un GGUF depuis une URL vers GGUF_DIR en yieldant des lignes NDJSON
- * de progression, puis enchaîne automatiquement sur la création du modèle Ollama.
- * Les erreurs sont émises comme ligne NDJSON `{"error": ...}` plutôt que de faire
- * échouer le flux : la connexion streamée est déjà ouverte à ce stade.
- */
-export async function* downloadGgufFromUrl(url: string, name: string): AsyncGenerator<string> {
-  let dest: string;
-
-  try {
-    await ensureGgufDir();
-    const filename = decodeURIComponent(url.split('/').pop()?.split('?')[0] || `${name}.gguf`);
-    dest = join(GGUF_DIR, filename);
-
-    const response = await fetch(url);
-    if (!response.ok || !response.body) {
-      throw new Error(`Échec du téléchargement (HTTP ${response.status})`);
-    }
-
-    const total = Number(response.headers.get('content-length') ?? 0);
-    let downloaded = 0;
-    const fileStream = createWriteStream(dest);
-    const reader = response.body.getReader();
-
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        downloaded += value.length;
-        fileStream.write(value);
-        const progress = total ? Math.round((downloaded / total) * 100) : 0;
-        yield JSON.stringify({ status: 'downloading', progress }) + '\n';
-      }
-    } finally {
-      fileStream.end();
-      await finished(fileStream);
-    }
-  } catch (error) {
-    yield JSON.stringify({ status: 'error', error: errorMessage(error) }) + '\n';
-    return;
-  }
-
-  yield* createModelStream(name, dest);
-}
 
 const sha256File = (path: string): Promise<string> =>
   new Promise((resolve, reject) => {
@@ -124,7 +126,7 @@ const sha256File = (path: string): Promise<string> =>
  */
 const uploadBlob = async (ggufPath: string, digest: string): Promise<void> => {
   const stream = createReadStream(ggufPath);
-  const response = await fetch(`${OLLAMA_URL}/api/blobs/sha256:${digest}`, {
+  const response = await fetch(`${getOllamaUrl()}/api/blobs/sha256:${digest}`, {
     method: 'POST',
     body: Readable.toWeb(stream) as ReadableStream,
     duplex: 'half',
@@ -149,7 +151,7 @@ export async function* createModelStream(name: string, ggufPath: string): AsyncG
     yield JSON.stringify({ status: 'uploading blob' }) + '\n';
     await uploadBlob(ggufPath, digest);
 
-    const response = await fetch(`${OLLAMA_URL}/api/create`, {
+    const response = await fetch(`${getOllamaUrl()}/api/create`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

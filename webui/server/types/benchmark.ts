@@ -26,13 +26,25 @@ export interface BenchmarkManifestCategory {
 export interface BenchmarkManifest {
   categories: BenchmarkManifestCategory[]
   default_judge: string
+  default_options: BenchmarkRunOptions
   recommended?: Record<string, string[]>
+}
+
+// Options de génération des modèles testés (voir RUN_OPTIONS dans benchmark.py).
+// null = ne pas imposer de valeur : le réglage du modelfile du modèle s'applique.
+export interface BenchmarkRunOptions {
+  temperature: number | null
+  num_ctx: number | null
+  num_predict: number
 }
 
 export interface BenchmarkRunRequest {
   models: string[]
   testIds: string[]
   judgeModel: string | null
+  options?: BenchmarkRunOptions
+  // tests propres à chaque modèle (relance des tests ratés d'un run) : remplace models/testIds
+  plan?: Record<string, string[]>
 }
 
 export interface BenchmarkTestResult {
@@ -48,6 +60,13 @@ export interface BenchmarkTestResult {
   tokens_per_sec: number
   elapsed_sec: number
   response_preview: string
+  options?: BenchmarkRunOptions // absent des runs antérieurs à l'ajout des options
+  // latence (absente des runs antérieurs) : TTFT = chargement + lecture du prompt (+ 1er token)
+  ttft_sec?: number | null
+  load_sec?: number | null
+  prompt_eval_sec?: number | null
+  prompt_tokens?: number | null
+  error?: boolean // le modèle n'a pas pu répondre (absent des runs antérieurs : repli sur « ERREUR » dans response_preview)
 }
 
 export interface BenchmarkRunModelResult {
@@ -57,6 +76,8 @@ export interface BenchmarkRunModelResult {
   timestamp: string
   avg_score: number
   avg_tokens_per_sec: number
+  median_ttft_sec?: number | null // TTFT hors test de chargement (voir latency_summary() dans benchmark.py)
+  load_sec?: number | null
   total_tests: number
   verdict: string
   tests: BenchmarkTestResult[]

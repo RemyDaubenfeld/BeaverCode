@@ -8,22 +8,15 @@
             class="flex items-center justify-center px-3 py-1.5 text-sm font-semibold rounded-bc cursor-pointer border-2 border-bc-border-strong shadow-bc-hard-sm transition-transform duration-75 active:translate-x-0.5 active:translate-y-0.5 active:shadow-none bg-bc-orange text-bc-ink"
           >
             <MagnifyingGlassCircleIcon class="w-4 h-4 cursor-pointer mr-2"/>
-            Parcourir la bibliothèque
+            Bibliothèque Ollama
           </button>
           <button
-            @click="addModel = true"
-            class="flex items-center justify-center ml-5 px-3 py-1.5 text-sm font-semibold rounded-bc cursor-pointer border-2 border-bc-border-strong shadow-bc-hard-sm transition-transform duration-75 active:translate-x-0.5 active:translate-y-0.5 active:shadow-none bg-bc-orange text-bc-ink"
+            @click="showHuggingFace = true"
+            title="Modèles GGUF de HuggingFace, et import d'un fichier GGUF local"
+            class="flex items-center ml-5 justify-center px-3 py-1.5 text-sm font-semibold rounded-bc cursor-pointer border-2 border-bc-border-strong shadow-bc-hard-sm transition-transform duration-75 active:translate-x-0.5 active:translate-y-0.5 active:shadow-none bg-bc-orange text-bc-ink"
           >
             <CloudArrowDownIcon class="w-4 h-4 cursor-pointer mr-2" />
-            Importer un modèle
-          </button>
-
-          <button
-            @click="createModel = true"
-            class="flex items-center justify-center ml-5 px-3 py-1.5 text-sm font-semibold rounded-bc cursor-pointer border-2 border-bc-border-strong shadow-bc-hard-sm transition-transform duration-75 active:translate-x-0.5 active:translate-y-0.5 active:shadow-none bg-bc-green text-bc-ink"
-          >
-           <PlusCircleIcon class="w-4 h-4 cursor-pointer mr-2" />
-            Créer un modèle
+            HuggingFace
           </button>
 
           <PullProgressList class="flex-1 ml-5 min-w-0" />
@@ -35,16 +28,10 @@
           @pull-success="onPullSuccess"
         />
 
-        <ImportModelModal
-          v-if="addModel"
-          @close="addModel = false"
+        <HuggingFaceModal
+          v-if="showHuggingFace"
+          @close="showHuggingFace = false"
           @pull-success="onPullSuccess"
-        />
-
-        <CreateModelModal
-          v-if="createModel"
-          @close="createModel = false"
-          @create-success="onPullSuccess"
         />
 
         <p v-if="deleteError" class="mt-3 text-sm text-bc-danger">{{ deleteError }}</p>
@@ -53,15 +40,13 @@
 
 <script setup>
 import LibrarySearchModal from '~/components/LibrarySearchModal.vue'
-import ImportModelModal from '~/components/ImportModelModal.vue'
-import CreateModelModal from '~/components/CreateModelModal.vue'
+import HuggingFaceModal from '~/components/HuggingFaceModal.vue'
 
-import { CloudArrowDownIcon, MagnifyingGlassCircleIcon, PlusCircleIcon } from '@heroicons/vue/24/solid'
+import { CloudArrowDownIcon, MagnifyingGlassCircleIcon } from '@heroicons/vue/24/solid'
 
 
 const showLibrary = ref(false)
-const addModel = ref(false)
-const createModel = ref(false)
+const showHuggingFace = ref(false)
 const deleteError = ref('')
 const { refresh } = useModels()
 

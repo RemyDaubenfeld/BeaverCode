@@ -1,8 +1,8 @@
 import { $fetch } from 'ofetch';
 import * as cheerio from 'cheerio';
-import type { LibraryModel, LibrarySearchResponse, LibraryRefreshResponse } from '../types/library';
+import type { LibraryModel, LibrarySearchResponse, LibraryRefreshResponse, HfRepo, HfGgufFile, HfSearchResult } from '../types/library';
+import { getOllamaUrl } from './settings.service';
 
-const OLLAMA_URL = 'http://localhost:11434';
 const OLLAMA_LIBRARY_URL = 'https://ollama.com/library';
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
@@ -102,10 +102,111 @@ export const refreshLibrary = async (): Promise<LibraryRefreshResponse> => {
  * `signal` permet d'interrompre le pull côté Ollama (annulation depuis l'UI).
  */
 export const pullModelStream = (model: string, signal?: AbortSignal): Promise<Response> => {
-  return fetch(`${OLLAMA_URL}/api/pull`, {
+  return fetch(`${getOllamaUrl()}/api/pull`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ model, stream: true }),
     signal,
   });
 };
+
+// --- Dépôts HuggingFace ------------------------------------------------------------------------
+//
+// Ollama sait télécharger un GGUF directement depuis HuggingFace : `ollama pull hf.co/<user>/<repo>:<quant>`
+// (HuggingFace sert un manifeste au format Ollama, le tag sélectionne le fichier dont le nom contient
+// la quantification). Le pull lui-même passe donc par la file existante (usePulls → /api/library/pull) ;
+// ici on liste seulement les fichiers GGUF du dépôt pour choisir une quantification en connaissant sa taille.
+
+const HF_API_URL = 'https://huggingface.co/api/models';
+
+// Fin du nom de fichier = quantification : Q4_K_M, IQ4_XS, UD-Q4_K_XL, BF16, F16, Q8_0…
+const QUANT_REGEX = /[-._]((?:UD-)?(?:I?Q\d[A-Z0-9_]*|BF16|F16|F32))$/i;
+// Fichier découpé : <nom>-00001-of-00003.gguf
+const SPLIT_REGEX = /-(\d{5})-of-(\d{5})$/;
+
+interface HfTreeEntry {
+  type: 'file' | 'directory'
+  path: string
+  size: number
+}
+
+export class HfRepoError extends Error {
+  constructor(message: string, public statusCode: number) {
+    super(message);
+  }
+}
+
+export async function getHfRepo(repo: string): Promise<HfRepo> {
+  const [info, tree] = await Promise.all([
+    $fetch<any>(`${HF_API_URL}/${repo}`),
+    // recursive : certains dépôts rangent les gros modèles découpés dans des sous-dossiers (BF16/…)
+    $fetch<HfTreeEntry[]>(`${HF_API_URL}/${repo}/tree/main`, { query: { recursive: true } }),
+  ]).catch((error) => {
+    // HuggingFace répond 401 (et non 404) pour un dépôt inexistant comme pour un dépôt privé
+    const status = error?.response?.status;
+    if (status === 401 || status === 404) throw new HfRepoError('Dépôt introuvable ou privé', 404);
+    throw new HfRepoError('HuggingFace ne répond pas', 502);
+  });
+
+  // regroupe par quantification (les morceaux d'un fichier découpé n'en font qu'un)
+  const byQuant = new Map<string, HfGgufFile>();
+  for (const entry of tree) {
+    if (entry.type !== 'file' || !entry.path.toLowerCase().endsWith('.gguf')) continue;
+    const filename = entry.path.split('/').pop()!;
+    // projecteur vision (mmproj-*.gguf) : pas un modèle à part entière, Ollama le récupère avec le modèle
+    if (filename.toLowerCase().startsWith('mmproj')) continue;
+    let stem = filename.slice(0, -'.gguf'.length);
+    const split = SPLIT_REGEX.test(stem);
+    stem = stem.replace(SPLIT_REGEX, '');
+    const quant = QUANT_REGEX.exec(stem)?.[1];
+    if (!quant) continue;
+    const key = quant.toUpperCase();
+    const existing = byQuant.get(key);
+    if (existing) {
+      existing.size += entry.size;
+      existing.split ||= split;
+    } else {
+      byQuant.set(key, { quant, filename: entry.path, size: entry.size, split });
+    }
+  }
+
+  const total = info.gguf?.total ?? null;
+  return {
+    repo: info.id ?? repo,
+    gated: !!info.gated,
+    downloads: info.downloads ?? null,
+    likes: info.likes ?? null,
+    architecture: info.gguf?.architecture ?? null,
+    total_params: total,
+    active_params: moeActiveParams(info.id ?? repo, total),
+    context_length: info.gguf?.context_length ?? null,
+    files: [...byQuant.values()].sort((a, b) => a.size - b.size),
+  };
+}
+
+// HuggingFace ne donne pas les paramètres actifs d'un MoE (il faudrait lire les métadonnées du GGUF).
+// Convention de nommage quasi universelle : « Qwen3-30B-A3B », « gemma-4-26B-A4B » → A3B = 3B actifs.
+// Sans ce motif dans le nom, le modèle est traité comme dense (actifs = total).
+function moeActiveParams(repo: string, total: number | null): number | null {
+  const match = /[-_]A(\d+(?:\.\d+)?)B(?:[-_]|$)/i.exec(repo);
+  if (!match || !total) return total;
+  const active = Number(match[1]) * 1e9;
+  return active < total ? active : total;
+}
+
+// Recherche de dépôts contenant des GGUF (le seul format qu'Ollama sait tirer de HuggingFace), triés
+// par téléchargements. Sans texte : les dépôts GGUF les plus téléchargés.
+export async function searchHf(query: string): Promise<HfSearchResult[]> {
+  const models = await $fetch<any[]>(HF_API_URL, {
+    query: { search: query.trim() || undefined, filter: 'gguf', sort: 'downloads', limit: 30 },
+  }).catch(() => {
+    throw new HfRepoError('HuggingFace ne répond pas', 502);
+  });
+  return models.map((m) => ({
+    repo: m.id,
+    downloads: m.downloads ?? 0,
+    likes: m.likes ?? 0,
+    pipeline_tag: m.pipeline_tag ?? null,
+    updated_at: m.lastModified ?? m.createdAt ?? null,
+  }));
+}

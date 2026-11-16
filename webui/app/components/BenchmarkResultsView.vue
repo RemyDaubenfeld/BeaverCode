@@ -135,7 +135,14 @@
           <div class="space-y-2">
             <div v-for="entry in group.entries" :key="entry.model" class="rounded-bc border border-bc-border bg-bc-surface-alt px-3 py-1.5">
               <div class="flex items-center justify-between gap-2 text-xs mb-1">
-                <span class="truncate font-mono text-bc-text-secondary" :title="entry.model">{{ entry.model }}</span>
+                <span class="flex min-w-0 items-center gap-2">
+                  <span
+                    class="shrink-0 w-6 text-right font-mono"
+                    :class="entry.rank === 1 ? 'font-semibold text-bc-orange-light' : 'text-bc-text-muted'"
+                    :title="entry.rank === 1 ? `Meilleur modèle en ${capabilityGroupLabels[group.id] ?? group.id}` : `${entry.rank}e en ${capabilityGroupLabels[group.id] ?? group.id}`"
+                  >#{{ entry.rank }}</span>
+                  <span class="truncate font-mono text-bc-text-secondary" :title="entry.model">{{ entry.model }}</span>
+                </span>
                 <span class="shrink-0 whitespace-nowrap flex items-center gap-1.5">
                   <span :class="scoreColorClass(entry.avgScore)" class="font-medium">{{ entry.avgScore.toFixed(1) }}/5</span>
                   <span class="text-bc-text-muted font-mono">
@@ -296,9 +303,15 @@ const capabilityBreakdown = computed(() => {
       ;(byGroup[groupId] ??= []).push({ model: m.model, avgScore, avgTokensPerSec, testCount: tests.length })
     }
   }
+  // Classement PROPRE à chaque capacité : par note dans cette capacité (et non par note globale, qui
+  // plaçait par ex. un modèle à 3,7/5 en raisonnement devant un autre à 4,0/5), puis à égalité par vitesse.
+  // Les notes sont comparées arrondies au dixième, comme elles sont affichées : deux modèles affichés
+  // « 4.0/5 » sont départagés par leur vitesse, pas par une différence invisible.
+  const byScoreThenSpeed = (a, b) =>
+    Math.round(b.avgScore * 10) - Math.round(a.avgScore * 10) || b.avgTokensPerSec - a.avgTokensPerSec
   return [...capabilityOrder, 'other']
     .filter((id) => byGroup[id]?.length)
-    .map((id) => ({ id, entries: byGroup[id] }))
+    .map((id) => ({ id, entries: [...byGroup[id]].sort(byScoreThenSpeed).map((e, i) => ({ ...e, rank: i + 1 })) }))
 })
 
 const allCapabilityGroups = computed(() => capabilityBreakdown.value.map((g) => g.id))

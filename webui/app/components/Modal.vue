@@ -23,11 +23,11 @@
 import { XMarkIcon } from '@heroicons/vue/24/outline'
 
 const props = defineProps({
-  size: { type: String, default: 'md' }, // 'md' | 'xl'
+  size: { type: String, default: 'md' }, // 'md' | 'lg' | 'xl'
 })
 const emit = defineEmits(['close'])
 
-const maxWidthClass = computed(() => (props.size === 'xl' ? 'max-w-6xl' : 'max-w-lg'))
+const maxWidthClass = computed(() => ({ xl: 'max-w-6xl', lg: 'max-w-3xl' })[props.size] ?? 'max-w-lg')
 
 function onKeydown(e) {
   if (e.key === 'Escape') emit('close')

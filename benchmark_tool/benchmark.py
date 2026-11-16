@@ -43,6 +43,24 @@ def list_local_models(client: OllamaClient) -> list[str]:
 def model_exists(client: OllamaClient, model: str) -> bool:
     return model in list_local_models(client)
 
+# ─── Options de génération ───────────────────────────────────────────────────
+# Appliquées aux réponses des modèles TESTÉS. Valeurs par défaut : lib/config.py (variables
+# d'environnement BENCHMARK_*), surchargeables en CLI (--temperature, --num-ctx, --num-predict,
+# passés par la WebUI). Une valeur None = option non envoyée à Ollama → c'est le réglage du
+# modelfile du modèle qui s'applique (ex. son propre num_ctx), sinon le défaut d'Ollama.
+RUN_OPTIONS: dict = {
+    "temperature": DEFAULT_TEMPERATURE,
+    "num_ctx": DEFAULT_NUM_CTX,
+    "num_predict": DEFAULT_NUM_PREDICT,
+}
+
+# Le JUGE garde des réglages fixes, indépendants des options du run : sa notation doit rester
+# comparable d'un run à l'autre (un juge à température 1 noterait de façon plus aléatoire).
+JUDGE_OPTIONS: dict = {
+    "temperature": DEFAULT_TEMPERATURE,
+    "num_ctx": DEFAULT_NUM_CTX,
+}
+
 # ─── Envoi d'un prompt ───────────────────────────────────────────────────────
 
 def run_prompt(
@@ -53,20 +71,27 @@ def run_prompt(
     force_cpu: bool = False,
     tools: list[dict] | None = None,
     images: list[str] | None = None,
-    num_predict: int = DEFAULT_NUM_PREDICT,
+    num_predict: int | None = None,
+    options: dict | None = None,
 ) -> dict:
+    """`options` : options de génération (défaut : RUN_OPTIONS) ; `num_predict` les surcharge."""
     messages = []
     if system:
         messages.append({"role": "system", "content": system})
     messages.append({"role": "user", "content": prompt})
 
-    options = {"temperature": DEFAULT_TEMPERATURE, "num_ctx": DEFAULT_NUM_CTX, "num_predict": num_predict}
+    options = dict(RUN_OPTIONS if options is None else options)
+    if num_predict is not None:
+        options["num_predict"] = num_predict
+    options = {k: v for k, v in options.items() if v is not None}  # None = réglage du modèle
     if force_cpu:
         options["num_gpu"] = 0
 
     start = time.time()
     full_text_parts = []
+    thinking_chars = 0
     final_chunk = None
+    ttft = None  # temps jusqu'au PREMIER morceau de réponse (mesuré ici, côté client)
 
     for chunk in client.chat(
         model=model,
@@ -75,7 +100,10 @@ def run_prompt(
         tools=tools,
         images=images,
     ):
+        if ttft is None and not chunk.done:
+            ttft = time.time() - start
         full_text_parts.append(chunk.content)
+        thinking_chars += len(chunk.thinking)
         if chunk.done:
             final_chunk = chunk
 
@@ -95,12 +123,26 @@ def run_prompt(
     # si le modèle n'a rien appelé, ou si aucun `tools` n'a été fourni
     tool_calls = final_chunk.tool_calls if final_chunk else []
 
+    # durées renvoyées par Ollama sur le dernier chunk (nanosecondes → secondes)
+    def seconds(ns: int | None) -> float | None:
+        return round(ns / 1e9, 3) if ns else None
+
     return {
         "response": response_text,
         "tokens": eval_count,
         "elapsed_sec": round(elapsed, 2),
         "tokens_per_sec": tokens_per_sec,
         "tool_calls": tool_calls,
+        # TTFT = chargement du modèle + lecture du prompt (+ 1er token). Mesuré : qwen2.5:3b 4,08 s à
+        # froid (dont 3,96 s de chargement), 0,21 s déjà chargé. Sans aucun morceau avant le chunk final
+        # (réponse vide), on retombe sur la durée totale.
+        "ttft_sec": round(ttft if ttft is not None else elapsed, 3),
+        "load_sec": seconds(final_chunk.load_duration_ns) if final_chunk else None,
+        "prompt_eval_sec": seconds(final_chunk.prompt_eval_duration_ns) if final_chunk else None,
+        "prompt_tokens": final_chunk.prompt_eval_count if final_chunk else None,
+        # pour diagnostiquer une réponse vide : le modèle a-t-il réfléchi, et s'est-il arrêté sur la limite ?
+        "thinking_chars": thinking_chars,
+        "done_reason": final_chunk.done_reason if final_chunk else None,
     }
 
 # ─── Images de test (catégorie "vision") ─────────────────────────────────────
@@ -199,7 +241,7 @@ Evaluate and return the JSON object."""
         # Le juge ne doit sortir qu'un petit JSON (score + 2 phrases) — un plafond bas
         # évite qu'un modèle "thinking" (bloc <think> avant le JSON, voir nettoyage
         # plus bas) ne génère indéfiniment, surtout en CPU forcé (~5 tok/s observé).
-        result = run_prompt(client, judge_model, judge_prompt, system=JUDGE_SYSTEM, force_cpu=True, num_predict=400)
+        result = run_prompt(client, judge_model, judge_prompt, system=JUDGE_SYSTEM, force_cpu=True, num_predict=400, options=JUDGE_OPTIONS)
         raw = result["response"].strip()
         # Qwen3 (et d'autres modèles "thinking") peuvent émettre un bloc de
         # raisonnement AVANT le JSON, malgré la consigne du JUDGE_SYSTEM.
@@ -292,7 +334,16 @@ def build_manifest(models: list[str] | None = None) -> dict:
         for category, tests in TESTS.items()
     ]
 
-    manifest = {"categories": categories, "default_judge": DEFAULT_JUDGE}
+    manifest = {
+        "categories": categories,
+        "default_judge": DEFAULT_JUDGE,
+        # valeurs par défaut des options du run (lib/config.py), pour préremplir la WebUI
+        "default_options": {
+            "temperature": DEFAULT_TEMPERATURE,
+            "num_ctx": DEFAULT_NUM_CTX,
+            "num_predict": DEFAULT_NUM_PREDICT,
+        },
+    }
 
     if models:
         manifest["recommended"] = {
@@ -311,6 +362,58 @@ def emit_json(event: dict) -> None:
     print(json.dumps(event, ensure_ascii=False), flush=True)
 
 # ─── Benchmark principal ─────────────────────────────────────────────────────
+
+# Capacité Ollama REQUISE par une catégorie de tests (les autres ne demandent que « completion ») — même
+# liste que categoryRequiredCapabilities dans BenchmarkRunner.vue
+REQUIRED_CAPABILITY = {"vision": "vision", "tool_calling": "tools"}
+
+def test_category(test: dict) -> str:
+    return next((k for k, v in TESTS.items() if any(t["id"] == test["id"] for t in v)), "unknown")
+
+def error_entry(test: dict, message: str, run: dict | None = None) -> dict:
+    """Entrée de résultat d'un test que le modèle n'a pas pu mener à bien (plantage, délai, réflexion coupée…).
+    `error: True` la distingue d'une vraie mauvaise réponse : elle est relançable depuis la WebUI."""
+    return {
+        "test_id": test["id"],
+        "label": test["label"],
+        "category": test_category(test),
+        "score": 0, "rule_score": 0, "judge_score": None,
+        "strengths": "", "weaknesses": message,
+        "tokens": run["tokens"] if run else 0,
+        "tokens_per_sec": run["tokens_per_sec"] if run else 0,
+        "elapsed_sec": run["elapsed_sec"] if run else 0,
+        "ttft_sec": run["ttft_sec"] if run else None,
+        "load_sec": run["load_sec"] if run else None,
+        "prompt_eval_sec": run["prompt_eval_sec"] if run else None,
+        "prompt_tokens": run["prompt_tokens"] if run else None,
+        "response_preview": f"ERREUR: {message}",
+        "options": dict(RUN_OPTIONS),
+        "error": True,
+    }
+
+def latency_summary(tests: list[dict]) -> tuple[float | None, float | None]:
+    """(TTFT « à chaud », temps de chargement) d'un modèle sur ses tests.
+
+    Seul le premier test d'un modèle paie son chargement en mémoire (qwen2.5:3b : TTFT 4,3 s dont 4,2 s de
+    chargement, puis 0,2 s pour les tests suivants). On rapporte donc séparément :
+    - le chargement : le plus long `load_sec` des tests ;
+    - le TTFT : médiane des tests SANS celui qui a payé le chargement (celui au plus long `load_sec`) —
+      une simple médiane ne suffit pas sur peu de tests (sur 2, c'est la moyenne des deux). Si le modèle
+      était déjà chargé, écarter un test à chaud parmi d'autres ne change presque rien.
+    Même calcul côté WebUI pour le comparatif (latencySummary() dans results.service.ts).
+    """
+    timed = [t for t in tests if t.get("ttft_sec") is not None]
+    loads = [t["load_sec"] for t in timed if t.get("load_sec") is not None]
+    load_max = round(max(loads), 3) if loads else None
+    if len(timed) >= 2 and loads:
+        cold = max(timed, key=lambda t: t.get("load_sec") or 0)
+        timed = [t for t in timed if t is not cold]
+    ttfts = sorted(t["ttft_sec"] for t in timed)
+    if not ttfts:
+        return None, load_max
+    mid = len(ttfts) // 2
+    median = ttfts[mid] if len(ttfts) % 2 else (ttfts[mid - 1] + ttfts[mid]) / 2
+    return round(median, 3), load_max
 
 def benchmark_model(
     client: OllamaClient,
@@ -331,6 +434,23 @@ def benchmark_model(
         tests = get_tests_for_model(model)
     detected_types = detect_model_type(model)
 
+    # Un test de vision envoyé à un modèle qui ne voit pas (ou d'appel d'outils à un modèle sans « tools »)
+    # renvoie une réponse vide, qui était quand même notée : on ne lance que les tests dont le modèle a la
+    # capacité requise. (Garde-fou côté Python : la WebUI filtre déjà avant, mais la CLI non.)
+    try:
+        capabilities = set(client.capabilities(model))
+    except Exception:
+        capabilities = None  # Ollama ne répond pas sur /api/show : on ne filtre pas
+    if capabilities is not None:
+        skipped = [t["id"] for t in tests if REQUIRED_CAPABILITY.get(test_category(t), "completion") not in capabilities]
+        if skipped:
+            tests = [t for t in tests if t["id"] not in skipped]
+            if stream_json:
+                emit_json({"event": "tests_skipped", "model": model, "test_ids": skipped,
+                           "message": f"{len(skipped)} test(s) ignoré(s) : capacité absente du modèle"})
+            else:
+                print(f"  ⚠  {len(skipped)} test(s) ignoré(s) (capacité absente) : {', '.join(skipped)}")
+
     if stream_json:
         emit_json({
             "event": "model_start",
@@ -338,6 +458,7 @@ def benchmark_model(
             "detected_types": detected_types,
             "test_count": len(tests),
             "judge_model": judge_model,
+            "options": RUN_OPTIONS,
         })
     else:
         print(f"\n{'═'*60}")
@@ -361,18 +482,30 @@ def benchmark_model(
         except Exception as e:
             if verbose:
                 print(f"ERREUR ({e})")
-            error_entry = {
-                "test_id": test["id"],
-                "label": test["label"],
-                "category": next((k for k, v in TESTS.items() if any(t["id"] == test["id"] for t in v)), "unknown"),
-                "score": 0, "rule_score": 0, "judge_score": None,
-                "strengths": "", "weaknesses": f"Erreur : {e}",
-                "tokens": 0, "tokens_per_sec": 0, "elapsed_sec": 0,
-                "response_preview": f"ERREUR: {e}"
-            }
-            results.append(error_entry)
+            entry = error_entry(test, f"Erreur : {e}")
+            results.append(entry)
             if stream_json:
-                emit_json({"event": "test_result", "model": model, **error_entry})
+                emit_json({"event": "test_result", "model": model, **entry})
+            continue
+
+        # Réponse vide (hors tests d'appel d'outils, où l'appel remplace le texte) : jamais notée par les
+        # règles ni le juge — une règle « ne contient pas X » passe sur un texte vide, et le juge notait
+        # jusqu'à 4/5 une réponse absente.
+        if not expected_tool and not run["response"].strip():
+            if run["done_reason"] == "length" and run["thinking_chars"]:
+                # Modèle à raisonnement coupé PENDANT sa réflexion : la limite de tokens compte aussi la
+                # réflexion (qwen3.5:4b : 4 742 caractères de réflexion, 0 de réponse, avec 1024 tokens max).
+                # Mesure invalide, pas un échec du modèle → erreur relançable avec une limite plus haute.
+                message = (f"Réflexion non terminée : limite de {RUN_OPTIONS.get('num_predict')} tokens atteinte "
+                           "avant la réponse — augmenter « Tokens max » pour les modèles à raisonnement")
+                entry = error_entry(test, message, run)
+            else:
+                entry = {**error_entry(test, "Réponse vide", run), "error": False, "response_preview": ""}
+            if verbose:
+                print(entry["weaknesses"])
+            results.append(entry)
+            if stream_json:
+                emit_json({"event": "test_result", "model": model, **entry})
             continue
 
         total_tokens += run["tokens"]
@@ -422,7 +555,14 @@ def benchmark_model(
             "tokens": run["tokens"],
             "tokens_per_sec": run["tokens_per_sec"],
             "elapsed_sec": run["elapsed_sec"],
-            "response_preview": response[:300] + "..." if len(response) > 300 else response
+            "ttft_sec": run["ttft_sec"],
+            "load_sec": run["load_sec"],
+            "prompt_eval_sec": run["prompt_eval_sec"],
+            "prompt_tokens": run["prompt_tokens"],
+            "response_preview": response[:300] + "..." if len(response) > 300 else response,
+            # réglages avec lesquels CE test a été passé : le comparatif (leaderboard.json) fusionne des
+            # tests de runs différents, chaque test doit donc porter les siens
+            "options": dict(RUN_OPTIONS),
         }
         results.append(test_entry)
         if stream_json:
@@ -430,6 +570,7 @@ def benchmark_model(
 
     avg_score = round(sum(r["score"] for r in results) / len(results), 2) if results else 0
     avg_tps = round(total_tokens / total_time, 1) if total_time > 0 else 0
+    ttft_med, load_max = latency_summary(results)
 
     score_map = {5: "Excellent", 4: "Bon", 3: "Passable", 2: "Insuffisant", 1: "Inutilisable"}
     verdict = score_map.get(round(avg_score), "Passable")
@@ -440,6 +581,8 @@ def benchmark_model(
             "model": model,
             "avg_score": avg_score,
             "avg_tokens_per_sec": avg_tps,
+            "median_ttft_sec": ttft_med,
+            "load_sec": load_max,
             "total_tests": len(results),
             "verdict": verdict,
         })
@@ -451,9 +594,12 @@ def benchmark_model(
         "model": model,
         "detected_types": detected_types,
         "judge_model": judge_model,
+        "options": dict(RUN_OPTIONS),
         "timestamp": datetime.now().isoformat(),
         "avg_score": avg_score,
         "avg_tokens_per_sec": avg_tps,
+        "median_ttft_sec": ttft_med,
+        "load_sec": load_max,
         "total_tests": len(results),
         "verdict": verdict,
         "tests": results
@@ -466,12 +612,19 @@ def save_results(all_results: list[dict], output_path: str = "benchmark_results.
         json.dump({
             "generated_at": datetime.now().isoformat(),
             "ollama_host": OllamaClient().base_url,
+            "options": RUN_OPTIONS,
             "models": all_results
         }, f, ensure_ascii=False, indent=2)
     if not quiet:
         print(f"\n  Résultats sauvegardés : {output_path}")
 
 # ─── CLI ─────────────────────────────────────────────────────────────────────
+
+def option_value(cast):
+    """Type argparse : un nombre, ou « model » → None (laisser le réglage du modelfile du modèle)."""
+    def parse(value: str):
+        return None if value == "model" else cast(value)
+    return parse
 
 def main():
     parser = argparse.ArgumentParser(
@@ -499,8 +652,18 @@ Exemples :
     # MIGRÉ : nouvel argument, absent avant. OLLAMA_BASE était une constante figée ;
     # avec OllamaClient, il devient trivial de le rendre configurable en CLI.
     parser.add_argument("--host", default=DEFAULT_HOST, help=f"URL du serveur Ollama (défaut : {DEFAULT_HOST})")
+    # Options de génération des modèles testés (voir RUN_OPTIONS) — « model » = ne pas imposer de valeur,
+    # le réglage du modelfile du modèle s'applique
+    parser.add_argument("--temperature", type=option_value(float), default=DEFAULT_TEMPERATURE,
+                        help=f"Température des modèles testés, ou « model » (défaut : {DEFAULT_TEMPERATURE})")
+    parser.add_argument("--num-ctx", type=option_value(int), default=DEFAULT_NUM_CTX,
+                        help=f"Taille du contexte, ou « model » (défaut : {DEFAULT_NUM_CTX})")
+    parser.add_argument("--plan", help='Tests par modèle en JSON, ex. \'{"qwen3:8b": ["code_fizzbuzz"], "gemma4:12b": ["chat_explain"]}\' (remplace --models/--tests)')
+    parser.add_argument("--num-predict", type=int, default=DEFAULT_NUM_PREDICT,
+                        help=f"Nombre max de tokens générés par réponse (défaut : {DEFAULT_NUM_PREDICT})")
 
     args = parser.parse_args()
+    RUN_OPTIONS.update(temperature=args.temperature, num_ctx=args.num_ctx, num_predict=args.num_predict)
 
     if args.manifest:
         print(json.dumps(build_manifest(args.models), ensure_ascii=False))
@@ -510,6 +673,14 @@ Exemples :
         args.judge = None
 
     selected_tests = get_tests_by_ids(args.tests.split(",")) if args.tests else None
+
+    # --plan : une liste de tests PROPRE À CHAQUE MODÈLE (relance des tests ratés d'un run, où chaque modèle
+    # a raté des tests différents) — remplace --models/--tests
+    plan: dict[str, list[dict]] | None = None
+    if args.plan:
+        raw_plan = json.loads(args.plan)
+        plan = {model: get_tests_by_ids(ids) for model, ids in raw_plan.items()}
+        args.models = list(plan)
 
     with OllamaClient(base_url=args.host) as client:
 
@@ -551,7 +722,7 @@ Exemples :
                 model,
                 judge_model=args.judge,
                 verbose=not args.quiet and not args.stream_json,
-                tests=selected_tests,
+                tests=plan[model] if plan else selected_tests,
                 stream_json=args.stream_json,
             )
             if result:

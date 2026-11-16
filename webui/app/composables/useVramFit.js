@@ -23,6 +23,23 @@ const RAM_BANDWIDTH_BYTES_PER_SEC = 15 * 1024 ** 3
 // En dessous, un modèle devient pénible en usage interactif (500 tokens > 1 min 30)
 const USABLE_MIN_TOKENS_PER_SEC = 5
 
+// Estimation avant téléchargement (bibliothèque Ollama, dépôts HuggingFace) : on ne connaît que le poids
+// des fichiers, pas l'architecture → KV cache forfaitaire pour 4k de contexte (mesuré entre 0.1 et
+// 0.6 Go selon les modèles) et la même marge de 5 % que côté serveur. Moins précis que l'estimation des
+// modèles installés (calculée depuis /api/show).
+export const KV_CACHE_GUESS_BYTES = 0.4 * 1024 ** 3
+const OVERHEAD_RATIO = 0.05
+
+// weightsBytes : taille des poids ; params : { active_params, total_params } pour un MoE (sinon dense)
+export function estimateFromWeights(weightsBytes, params = {}) {
+  return {
+    total_bytes: (weightsBytes + KV_CACHE_GUESS_BYTES) * (1 + OVERHEAD_RATIO),
+    weights_bytes: weightsBytes,
+    active_params: params.active_params ?? null,
+    total_params: params.total_params ?? null,
+  }
+}
+
 export function useVramFit() {
   const { gpus, ramTotalMB } = useHardware()
   const { loadedModels } = useModels()

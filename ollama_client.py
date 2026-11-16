@@ -104,6 +104,13 @@ class ChatChunk:
     total_duration_ns: int | None = None    # durée totale de la requête, en nanosecondes
     eval_count: int | None = None           # nombre de tokens générés (uniquement rempli si done=True)
     eval_duration_ns: int | None = None     # durée de la génération seule (hors chargement du modèle)
+    # Ce qui se passe AVANT le premier token (le TTFT, « time to first token », en est la somme) :
+    load_duration_ns: int | None = None         # chargement du modèle en mémoire (quelques s à froid, ~0,2 s s'il est déjà chargé)
+    prompt_eval_count: int | None = None        # nombre de tokens du prompt lus par le modèle
+    prompt_eval_duration_ns: int | None = None  # durée de lecture du prompt
+    # Modèles à raisonnement : leur réflexion arrive à part (message.thinking), AVANT la réponse
+    thinking: str = ""
+    done_reason: str | None = None  # dernier chunk : "stop" (fin normale) ou "length" (limite num_predict atteinte)
     tool_calls: list[dict[str, Any]] = field(default_factory=list)  # appels d'outils demandés par le modèle (mode chat_tools), présents sur le chunk qui les contient
 
     @property
@@ -156,6 +163,12 @@ class OllamaClient:
 
     def __exit__(self, *exc) -> None:
         self.close()
+
+    def capabilities(self, model: str) -> list[str]:
+        """Capacités du modèle selon Ollama (/api/show) : completion, tools, thinking, vision, embedding…"""
+        r = self._client.post("/api/show", json={"model": model})
+        r.raise_for_status()
+        return r.json().get("capabilities") or []
 
     def list_models(self) -> list[ModelInfo]:
         """
@@ -231,6 +244,11 @@ class OllamaClient:
                     total_duration_ns=data.get("total_duration"),
                     eval_count=data.get("eval_count"),
                     eval_duration_ns=data.get("eval_duration"),
+                    load_duration_ns=data.get("load_duration"),
+                    prompt_eval_count=data.get("prompt_eval_count"),
+                    prompt_eval_duration_ns=data.get("prompt_eval_duration"),
+                    thinking=message.get("thinking", "") or "",
+                    done_reason=data.get("done_reason"),
                     tool_calls=message.get("tool_calls") or [],
                 )
 

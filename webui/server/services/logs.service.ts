@@ -7,6 +7,11 @@ import { join } from 'node:path';
 
 const execFileAsync = promisify(execFile);
 
+// Historique envoyé à l'ouverture de la page. ~80 % des lignes d'Ollama sont des requêtes HTTP (le polling de
+// la WebUI, masqué par défaut côté page) : avec 200 lignes il ne restait parfois aucune ligne utile.
+const INITIAL_LINES = 1000;
+const INITIAL_BYTES = 200_000; // équivalent approximatif pour la source « fichier » (~200 octets par ligne)
+
 export type LogEmitter = {
   source: 'docker' | 'journalctl' | 'file';
   onLine: (cb: (line: string) => void) => void;
@@ -67,7 +72,7 @@ function startFileTailSource(filePath: string): LogEmitter {
     position = 0;
   }
 
-  const initialChunkSize = Math.min(position, 20_000);
+  const initialChunkSize = Math.min(position, INITIAL_BYTES);
   const startPos = position - initialChunkSize;
   let pendingInitial: string[] = [];
   if (initialChunkSize > 0) {
@@ -125,11 +130,11 @@ function startFileTailSource(filePath: string): LogEmitter {
 export async function openOllamaLogStream(): Promise<LogEmitter> {
   const containerName = process.env.OLLAMA_DOCKER_CONTAINER || 'ollama';
   if (await dockerContainerRunning(containerName)) {
-    return startProcessSource('docker', 'docker', ['logs', '-f', '--tail', '200', containerName]);
+    return startProcessSource('docker', 'docker', ['logs', '-f', '--tail', String(INITIAL_LINES), containerName]);
   }
 
   if (await journalctlUnitExists('ollama')) {
-    return startProcessSource('journalctl', 'journalctl', ['-u', 'ollama', '-f', '-n', '200', '--no-pager']);
+    return startProcessSource('journalctl', 'journalctl', ['-u', 'ollama', '-f', '-n', String(INITIAL_LINES), '--no-pager']);
   }
 
   const filePath = process.env.OLLAMA_LOG_FILE || defaultLogFilePath();

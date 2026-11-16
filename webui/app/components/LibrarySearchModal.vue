@@ -1,5 +1,5 @@
 <template>
-  <Modal @close="emit('close')">
+  <Modal size="lg" @close="emit('close')">
     <template #header>Bibliothèque Ollama</template>
 
     <div class="flex gap-2 mb-1">
@@ -92,6 +92,7 @@
 
 <script setup>
 import Modal from './Modal.vue'
+import { estimateFromWeights, KV_CACHE_GUESS_BYTES } from '~/composables/useVramFit'
 
 const emit = defineEmits(['close', 'pull-success'])
 
@@ -185,24 +186,16 @@ async function pull(m) {
 }
 
 // Estimation mémoire avant téléchargement : on ne connaît que le nombre de paramètres (label "7B"),
-// pas le fichier ni l'architecture. Approximation pour la quantification par défaut d'Ollama (Q4_K_M,
-// ~4.85 bits/paramètre ≈ 0.6 octet), plus un KV cache forfaitaire pour 4k de contexte (mesuré entre
-// 0.1 et 0.6 Go selon les modèles) et la même marge de 5 % que côté serveur.
-// Moins précis que l'estimation des modèles installés (calculée depuis /api/show).
+// pas le fichier. Poids approximés pour la quantification par défaut d'Ollama (Q4_K_M, ~4.85
+// bits/paramètre ≈ 0.6 octet) ; KV cache forfaitaire et marge : cf. estimateFromWeights().
 const BYTES_PER_PARAM_Q4 = 0.6
-const KV_CACHE_GUESS_BYTES = 0.4 * 1024 ** 3
-const OVERHEAD_RATIO = 0.05
 
 function libraryEstimate(m) {
   const size = selectedSize[m.model_identifier]
   const paramsB = size ? parseSizeB(size) : Infinity
   if (!Number.isFinite(paramsB)) return null // labels non numériques (ex. "e4b", "8x7b") : pas d'estimation
-  const weightsBytes = paramsB * 1e9 * BYTES_PER_PARAM_Q4
   // sans le fichier, impossible de savoir si c'est un MoE : traité comme un modèle dense
-  return {
-    total_bytes: (weightsBytes + KV_CACHE_GUESS_BYTES) * (1 + OVERHEAD_RATIO),
-    weights_bytes: weightsBytes,
-  }
+  return estimateFromWeights(paramsB * 1e9 * BYTES_PER_PARAM_Q4)
 }
 
 function libraryEstimateDetails(m) {

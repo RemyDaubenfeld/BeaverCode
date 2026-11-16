@@ -52,7 +52,7 @@
               {{ results[model].avgScore }}/5 — {{ results[model].verdict }}
             </span>
             <span class="text-bc-text-muted font-mono">
-              ({{ results[model].avgTokensPerSec }} tok/s, {{ formatDuration(modelElapsedSec(model)) }})
+              (<template v-if="formatLatency(results[model].tests)"><span title="TTFT : temps avant le premier token, hors chargement (test qui a chargé le modèle écarté, médiane des autres). Chargement : temps de mise en mémoire du modèle, payé au premier test.">{{ formatLatency(results[model].tests) }}</span> · </template>{{ results[model].avgTokensPerSec }} tok/s, {{ formatDuration(modelElapsedSec(model)) }}<template v-if="results[model].skipped?.length">, {{ results[model].skipped.length }} ignoré{{ results[model].skipped.length > 1 ? 's' : '' }} : capacité absente</template>)
             </span>
           </span>
           <span v-else class="text-xs text-bc-text-muted">en attente…</span>
@@ -72,6 +72,7 @@
                   {{ '★'.repeat(test.score) }}{{ '☆'.repeat(5 - test.score) }}
                 </td>
                 <td class="py-1 pr-3 text-bc-text-muted font-mono whitespace-nowrap">{{ test.tokens_per_sec }} tok/s</td>
+                <td class="py-1 pr-3 text-bc-text-muted font-mono whitespace-nowrap" :title="ttftTooltip(test)">TTFT {{ formatSeconds(test.ttft_sec) }}</td>
                 <td class="py-1 pr-3 text-bc-text-muted font-mono whitespace-nowrap">{{ formatDuration(test.elapsed_sec) }}</td>
                 <td class="py-1 text-bc-text-muted max-w-md truncate" :title="test.weaknesses">{{ test.weaknesses }}</td>
               </tr>
@@ -104,5 +105,5 @@ const {
   resetRun,
 } = useBenchmarkRun()
 
-const { scoreColorClass, formatDuration } = useBenchmarkFormat()
+const { scoreColorClass, formatDuration, formatSeconds, ttftTooltip, formatLatency } = useBenchmarkFormat()
 </script>

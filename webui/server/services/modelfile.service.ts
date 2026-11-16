@@ -1,8 +1,10 @@
 import { basename, join } from 'node:path';
 import { homedir } from 'node:os';
 import { mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
+import { deleteModel } from './ollama.service';
+import { renameModelInComparison } from './results.service';
+import { getOllamaUrl } from './settings.service';
 
-const OLLAMA_URL = 'http://localhost:11434';
 const MODELFILES_DIR = join(homedir(), '.ollama', 'modelfiles');
 
 const ensureModelfilesDir = async () => {
@@ -37,9 +39,9 @@ export interface ParsedModelfile {
 
 /**
  * Parseur minimal du DSL Modelfile d'Ollama : extrait les lignes PARAMETER et le
- * bloc SYSTEM. Ignore volontairement FROM (choisi dynamiquement dans CreateModelModal,
- * cf. commentaire d'origine dans CreateModelfileModal.vue) et TEMPLATE (hors scope) —
- * couvre le format réellement utilisé dans les .modelfile existants (~/.ollama/modelfiles).
+ * bloc SYSTEM. Les .modelfile de ~/.ollama/modelfiles servent de PRESETS (jeux de paramètres
+ * réutilisables d'un modèle à l'autre, chargés dans la fiche d'un modèle → « Modifier ») :
+ * FROM est donc volontairement ignoré (le modèle est celui de la fiche), TEMPLATE aussi (hors scope).
  */
 export const parseModelfile = (content: string): ParsedModelfile => {
   const parameters: ModelfileParameters = {};
@@ -79,9 +81,9 @@ export const readModelfile = async (filename: string): Promise<ParsedModelfile> 
 };
 
 /**
- * Sérialise des paramètres structurés (formulaire CreateModelfileModal) en fichier
- * .modelfile DSL, sans ligne FROM — ajoutée dynamiquement à la création du modèle
- * (CreateModelModal), pas figée dans le template.
+ * Enregistre un preset (paramètres + prompt système saisis dans la fiche d'un modèle) en fichier
+ * .modelfile DSL, sans ligne FROM : un preset s'applique à n'importe quel modèle. Écrase un preset
+ * de même nom.
  */
 export const saveModelfileTemplate = async (
   filename: string,
@@ -112,50 +114,85 @@ export const saveModelfileTemplate = async (
 };
 
 /**
- * Crée un modèle Ollama à partir d'un modèle de base existant (`from`) et des
- * paramètres/system extraits d'un .modelfile — API structurée d'Ollama, pas le DSL
- * texte brut (`modelfile: "..."` n'est plus accepté par `/api/create`, vérifié sur
- * Ollama 0.31.1 : "neither 'from' or 'files' was specified").
+ * Modifie les paramètres / le prompt système d'un modèle existant en le recréant à partir de
+ * lui-même (`from: name`). Comportement d'Ollama 0.31.1, vérifié sur un modèle de test :
+ * - les paramètres sont FUSIONNÉS clé par clé avec ceux du modèle : une clé envoyée remplace
+ *   l'ancienne valeur (pour `stop`, toute la liste est remplacée), une clé absente est conservée
+ *   → impossible de SUPPRIMER un paramètre par cette voie ;
+ * - `system` non vide remplace le prompt système, vide ou absent le conserve ;
+ * - template, licence, poids… sont conservés (seule la couche de paramètres change, les poids ne
+ *   sont ni copiés ni réécrits : l'opération est instantanée même pour un modèle de 50 Go).
+ * Avec `target` différent de `name`, le résultat est enregistré sous un NOUVEAU nom et le modèle
+ * d'origine reste intact (les poids sont partagés entre les deux, pas dupliqués sur le disque).
+ * Avec `rename` en plus, l'original est ensuite supprimé : Ollama n'a pas d'API de renommage, c'est
+ * donc « copier sous le nouveau nom puis supprimer l'ancien ». La suppression n'a lieu que si la
+ * création a réussi — en cas d'échec, l'original n'est jamais touché. Les résultats de benchmark
+ * (leaderboard.json, indexé par nom) suivent le nouveau nom.
  */
-export async function* createModelFromTemplate(
+export async function* updateModel(
   name: string,
-  fromModel: string,
-  modelfileFilename: string
+  parameters: ModelfileParameters,
+  system: string,
+  target: string = name,
+  rename = false
 ): AsyncGenerator<string> {
   try {
-    const { parameters, system } = await readModelfile(modelfileFilename);
-
-    const response = await fetch(`${OLLAMA_URL}/api/create`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: name,
-        from: fromModel,
-        parameters: Object.keys(parameters).length ? parameters : undefined,
-        system: system || undefined,
-        stream: true,
-      }),
-    });
-
-    if (!response.ok || !response.body) {
-      throw new Error(`Échec de la création du modèle (HTTP ${response.status})`);
+    let succeeded = false;
+    for await (const line of streamCreate(target, name, parameters, system)) {
+      const data = JSON.parse(line);
+      if (data.error) throw new Error(data.error);
+      if (data.status === 'success') succeeded = true;
+      // le « success » final est retardé tant que le renommage n'est pas terminé
+      if (!(rename && data.status === 'success')) yield line;
     }
 
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() ?? '';
-      for (const line of lines) {
-        if (line.trim()) yield line + '\n';
-      }
+    if (rename && target !== name) {
+      if (!succeeded) throw new Error('Création du nouveau modèle non confirmée : original conservé');
+      yield JSON.stringify({ status: `suppression de ${name}` }) + '\n';
+      await deleteModel(name);
+      await renameModelInComparison(name, target);
+      yield JSON.stringify({ status: 'success' }) + '\n';
     }
   } catch (error) {
     yield JSON.stringify({ status: 'error', error: errorMessage(error) }) + '\n';
+  }
+}
+
+// POST /api/create en streaming : relaie les lignes NDJSON de progression d'Ollama
+async function* streamCreate(
+  name: string,
+  fromModel: string,
+  parameters: ModelfileParameters,
+  system: string
+): AsyncGenerator<string> {
+  const response = await fetch(`${getOllamaUrl()}/api/create`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: name,
+      from: fromModel,
+      parameters: Object.keys(parameters).length ? parameters : undefined,
+      system: system || undefined,
+      stream: true,
+    }),
+  });
+
+  if (!response.ok || !response.body) {
+    throw new Error(`Échec de la création du modèle (HTTP ${response.status})`);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() ?? '';
+    for (const line of lines) {
+      if (line.trim()) yield line + '\n';
+    }
   }
 }

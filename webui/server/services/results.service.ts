@@ -96,6 +96,23 @@ const VERDICT_BY_SCORE: Record<number, string> = {
 // nouveau résultat, un test inédit est ajouté — les autres tests déjà
 // enregistrés pour ce modèle sont conservés. Sans ça, retester un modèle sur
 // un seul test effaçait tout l'historique des autres tests du comparatif.
+// (TTFT « à chaud », temps de chargement) — même calcul que latency_summary() dans benchmark.py :
+// le test qui a payé le chargement du modèle (plus long load_sec) est écarté du TTFT, rapporté à part
+function latencySummary(tests: BenchmarkTestResult[]): { ttftSec: number | null; loadSec: number | null } {
+  let timed = tests.filter((t) => t.ttft_sec != null);
+  const loads = timed.map((t) => t.load_sec).filter((v): v is number => v != null);
+  const loadSec = loads.length ? Math.max(...loads) : null;
+  if (timed.length >= 2 && loads.length) {
+    const cold = timed.reduce((a, b) => ((b.load_sec ?? 0) > (a.load_sec ?? 0) ? b : a));
+    timed = timed.filter((t) => t !== cold);
+  }
+  const ttfts = timed.map((t) => t.ttft_sec as number).sort((a, b) => a - b);
+  if (!ttfts.length) return { ttftSec: null, loadSec };
+  const mid = Math.floor(ttfts.length / 2);
+  const median = ttfts.length % 2 ? ttfts[mid] : (ttfts[mid - 1] + ttfts[mid]) / 2;
+  return { ttftSec: Math.round(median * 1000) / 1000, loadSec };
+}
+
 function mergeModelResult(existing: BenchmarkRunModelResult | undefined, incoming: BenchmarkRunModelResult): BenchmarkRunModelResult {
   const testsById = new Map<string, BenchmarkTestResult>();
   for (const t of existing?.tests ?? []) testsById.set(t.test_id, t);
@@ -107,6 +124,7 @@ function mergeModelResult(existing: BenchmarkRunModelResult | undefined, incomin
   const totalTokens = tests.reduce((s, t) => s + t.tokens, 0);
   const totalTime = tests.reduce((s, t) => s + t.elapsed_sec, 0);
   const avgTokensPerSec = totalTime > 0 ? Math.round((totalTokens / totalTime) * 10) / 10 : 0;
+  const { ttftSec, loadSec } = latencySummary(tests);
 
   return {
     model: incoming.model,
@@ -115,6 +133,8 @@ function mergeModelResult(existing: BenchmarkRunModelResult | undefined, incomin
     timestamp: !existing || incoming.timestamp > existing.timestamp ? incoming.timestamp : existing.timestamp,
     avg_score: avgScore,
     avg_tokens_per_sec: avgTokensPerSec,
+    median_ttft_sec: ttftSec,
+    load_sec: loadSec,
     total_tests: totalTests,
     verdict: VERDICT_BY_SCORE[Math.round(avgScore)] ?? 'Passable',
     tests,
@@ -166,5 +186,16 @@ export async function getComparison(): Promise<BenchmarkRunModelResult[]> {
 export async function deleteModelFromComparison(model: string): Promise<void> {
   const leaderboard = await readLeaderboard();
   delete leaderboard[model];
+  await writeLeaderboard(leaderboard);
+}
+
+// Renommage d'un modèle (fiche détail → « Renommer ») : ses résultats suivent le nouveau nom, sinon sa
+// note disparaîtrait de la liste des modèles. Les fichiers de run gardent l'ancien nom (historique).
+export async function renameModelInComparison(oldName: string, newName: string): Promise<void> {
+  const leaderboard = await readLeaderboard();
+  const entry = leaderboard[oldName];
+  if (!entry) return;
+  delete leaderboard[oldName];
+  leaderboard[newName] = { ...entry, model: newName };
   await writeLeaderboard(leaderboard);
 }

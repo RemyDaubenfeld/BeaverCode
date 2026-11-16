@@ -2,7 +2,7 @@
   <div>
     <div v-if="modelList" class="flex flex-wrap items-center gap-x-4 gap-y-2 mb-3 text-sm text-bc-text-secondary">
       <span class="text-xs text-bc-text-secondary whitespace-nowrap font-mono">
-        <template v-if="selectedCapabilities.length">
+        <template v-if="isFiltered">
           {{ filteredModelList.length }} sur {{ modelList.length }} modèles
         </template>
         <template v-else>
@@ -23,9 +23,17 @@
         />
         {{ capabilityLabels[cap] }}
       </label>
+      <input
+        v-model="nameQuery"
+        type="search"
+        placeholder="Filtrer par nom (ex: qwen coder)…"
+        title="Tous les mots doivent apparaître dans le nom ou la famille du modèle, dans n'importe quel ordre — Échap pour effacer"
+        @keydown.esc="nameQuery = ''"
+        class="w-72 px-2 py-1 rounded-bc bg-bc-surface-alt border border-bc-border font-mono text-xs text-bc-text-primary placeholder-bc-text-muted focus:outline-none focus:border-bc-orange"
+      />
       <button
-        v-if="selectedCapabilities.length"
-        @click="selectedCapabilities = []"
+        v-if="isFiltered"
+        @click="selectedCapabilities = []; nameQuery = ''"
         class="text-xs text-bc-text-muted hover:text-bc-text-secondary underline"
       >
         Réinitialiser
@@ -87,7 +95,9 @@
           <tr
             v-for="model in filteredModelList"
             :key="model.name"
-            class="border-b border-bc-border bg-bc-surface-alt hover:bg-bc-surface"
+            class="border-b border-bc-border bg-bc-surface-alt hover:bg-bc-surface cursor-pointer"
+            title="Cliquer pour voir la fiche du modèle"
+            @click="detailsModel = model.name; detailsNotice = ''"
           >
             <td class="py-2 pr-4 pl-4 text-bc-text-primary font-mono max-w-56 truncate" :title="model.name">
               {{ model.name }}
@@ -138,7 +148,7 @@
             <td class="py-2 pl-4 pr-4 text-right">
               <button
                 class="pr-3"
-                @click="$emit('delete-model', model.name)"
+                @click.stop="$emit('delete-model', model.name)"
               >
                 <TrashIcon class="w-4 h-4 cursor-pointer text-bc-danger" />
               </button>
@@ -146,7 +156,7 @@
           </tr>
           <tr v-if="filteredModelList.length === 0">
             <td :colspan="9 + capabilityColumns.length" class="py-6 text-center text-bc-text-muted">
-              Aucun modèle ne correspond aux capacités sélectionnées.
+              Aucun modèle ne correspond aux filtres.
             </td>
           </tr>
         </tbody>
@@ -154,6 +164,17 @@
     </div>
 
     <p v-if="!modelList" class="text-bc-text-secondary">Chargement des modèles…</p>
+
+    <!-- :key → changer de modèle recrée la fiche (nouvelle requête /api/model/show, onglets réinitialisés) -->
+    <ModelDetailsModal
+      v-if="detailsModel"
+      :key="detailsModel"
+      :name="detailsModel"
+      :initial-tab="detailsNotice ? 'parameters' : 'overview'"
+      :notice="detailsNotice"
+      @close="detailsModel = null; detailsNotice = ''"
+      @open-model="(n, notice) => { detailsModel = n; detailsNotice = notice }"
+    />
   </div>
 </template>
 
@@ -162,6 +183,10 @@ import { TrashIcon } from '@heroicons/vue/24/solid'
 defineEmits(['delete-model'])
 
 const { modelList } = useModels()
+
+// modèle dont la fiche détaillée est ouverte (clic sur une ligne)
+const detailsModel = ref(null)
+const detailsNotice = ref('')
 const { scoreColorClass } = useBenchmarkFormat()
 
 // notes du comparatif de benchmark (leaderboard.json), indexées par nom de modèle
@@ -222,13 +247,24 @@ function parseParameterSize(value) {
   return parseFloat(match[1]) * units[match[2].toUpperCase()]
 }
 
+// filtre par nom : chaque mot tapé doit apparaître dans le nom ou la famille du modèle, dans
+// n'importe quel ordre (« qwen coder » trouve « qwen3-coder-next:latest »)
+const nameQuery = ref('')
+const queryWords = computed(() => nameQuery.value.toLowerCase().split(/\s+/).filter(Boolean))
+const isFiltered = computed(() => selectedCapabilities.value.length > 0 || queryWords.value.length > 0)
+
+function matchesName(model) {
+  const haystack = `${model.name} ${model.details?.family ?? ''}`.toLowerCase()
+  return queryWords.value.every((word) => haystack.includes(word))
+}
+
 const filteredModelList = computed(() => {
   if (!modelList.value) return []
-  let list = selectedCapabilities.value.length === 0
-    ? modelList.value
-    : modelList.value.filter((model) =>
-        selectedCapabilities.value.some((cap) => model.capabilities?.includes(cap))
-      )
+  let list = modelList.value.filter((model) =>
+    matchesName(model)
+    && (selectedCapabilities.value.length === 0
+      || selectedCapabilities.value.some((cap) => model.capabilities?.includes(cap)))
+  )
 
   if (sortKey.value) {
     const getValue = sortValues[sortKey.value]
@@ -260,7 +296,7 @@ function memoryDetails(estimate) {
   return [
     `Poids : ${go(estimate.weights_bytes)}`,
     estimate.kv_cache_bytes != null
-      ? `KV cache (${formatContext(estimate.num_ctx)} tokens) : ${go(estimate.kv_cache_bytes)}`
+      ? `KV cache (${formatContext(estimate.num_ctx)} tokens, ${estimate.kv_cache_type ?? 'f16'}) : ${go(estimate.kv_cache_bytes)}`
       : 'KV cache : non estimable pour cette architecture',
     `Marge buffers (5 %) : ${go(estimate.overhead_bytes)}`,
   ]

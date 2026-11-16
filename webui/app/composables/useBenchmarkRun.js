@@ -13,7 +13,6 @@ const results = reactive({})
 const modelOrder = ref([])
 const expandedModels = ref(new Set())
 const showResultsModal = ref(false)
-let totalSelectedTests = 0
 let abortController = null
 
 function modelProgressPercent(model) {
@@ -35,7 +34,8 @@ const modelsDoneCount = computed(() => {
 })
 
 const globalProgressPercent = computed(() => {
-  const totalPlanned = modelOrder.value.length * totalSelectedTests
+  // chaque modèle peut avoir son propre nombre de tests (relance des tests ratés : plan par modèle)
+  const totalPlanned = modelOrder.value.reduce((sum, m) => sum + (results[m]?.testCount ?? 0), 0)
   if (!totalPlanned) return 0
   const completed = modelOrder.value.reduce((sum, m) => sum + (results[m]?.tests.length ?? 0), 0)
   return Math.round((completed / totalPlanned) * 100)
@@ -77,22 +77,30 @@ function handleEvent(event) {
         })
       }
       break
+    case 'tests_skipped':
+      // tests écartés par Python faute de capacité (garde-fou, la WebUI filtre déjà) : gardés pour affichage
+      if (results[event.model]) results[event.model].skipped = event.test_ids
+      break
     case 'error':
       errorMessage.value = event.message
       break
   }
 }
 
-async function runBenchmark({ models, testIds, judgeModel }) {
+// `plan` (optionnel) : { modèle: [ids de tests] } — tests propres à chaque modèle, remplace models/testIds
+async function runBenchmark({ models, testIds, judgeModel, options, plan }) {
+  if (plan) {
+    models = Object.keys(plan)
+    testIds = []
+  }
   running.value = true
   errorMessage.value = ''
   showResultsModal.value = true
   Object.keys(results).forEach((k) => delete results[k])
   expandedModels.value = new Set()
   modelOrder.value = [...models]
-  totalSelectedTests = testIds.length
   for (const model of modelOrder.value) {
-    results[model] = { status: 'pending', testCount: testIds.length, tests: [] }
+    results[model] = { status: 'pending', testCount: plan ? plan[model].length : testIds.length, tests: [] }
   }
   abortController = new AbortController()
 
@@ -100,7 +108,7 @@ async function runBenchmark({ models, testIds, judgeModel }) {
     const response = await fetch('/api/benchmark/run', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ models, testIds, judgeModel }),
+      body: JSON.stringify(plan ? { plan, judgeModel, options } : { models, testIds, judgeModel, options }),
       signal: abortController.signal,
     })
     if (!response.ok || !response.body) throw new Error('Échec du lancement du benchmark')
