@@ -3,3 +3,7 @@
 /docs
 /harnais
 /mcp/
+
+# Résultats de benchmark : données locales, propres à cette machine
+/benchmark_tool/results/
+/benchmark_tool/leaderboard*.json

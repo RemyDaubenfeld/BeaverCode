@@ -6,7 +6,7 @@ Ce fichier fournit des instructions à Claude Code (claude.ai/code) pour travail
 
 BeaverCode est une stack IA locale construite autour d'[Ollama](https://ollama.com) : une WebUI Nuxt pour gérer des modèles locaux et les benchmarker, plus un outil de benchmark en Python. Un harnais d'agent de codage (forké depuis OpenFox) est prévu mais pas encore intégré.
 
-**Important :** `docs/`, `harnais/`, `mcp/` et `.claude/` sont tous dans `.gitignore` — ils existent sur le disque mais ne sont **pas suivis par git**. Seuls `webui/`, `ollama_client.py`, `README.md` et `.gitignore` font partie du dépôt. À garder en tête en raisonnant sur "ce qui a changé" via git — ces dossiers n'apparaîtront jamais dans les diffs ni le `git log`.
+**Important :** `docs/`, `harnais/`, `mcp/` et `.claude/` sont tous dans `.gitignore` — ils existent sur le disque mais ne sont **pas suivis par git**. Font partie du dépôt : `webui/`, `benchmark_tool/` (code, banque de tests, images de vision — **mais pas** ses données locales `results/` et `leaderboard*.json`, ignorées), `ollama_client.py`, `CLAUDE.md`, `README.md` et `.gitignore`. À garder en tête en raisonnant sur "ce qui a changé" via git — ces dossiers n'apparaîtront jamais dans les diffs ni le `git log`.
 
 ## Commandes
 
@@ -66,7 +66,7 @@ Ollama tourne dans **Docker** (conteneur `ollama`, d'où les chemins `/root/.oll
 
 Le travail UI doit suivre la charte graphique BeaverCode (palette sombre et chaude, couleurs de marque orange/vert, bordures avec ombre dure 2px style "sticker", typographie à trois rôles — Space Grotesk/Inter/JetBrains Mono). La spec est appliquée par le sous-agent `beavercode-design` — à utiliser pour tout travail sous `webui/app/components/` ou `webui/app/pages/`. Note : `webui/app/assets/css/main.css` ne câble pas encore les tokens de marque dans un bloc `@theme` Tailwind v4, et une grande partie de l'UI existante utilise encore le gris/bleu par défaut de Tailwind au lieu des couleurs de marque — c'est une dérive connue, pas une régression à corriger sans réfléchir.
 
-### Outil de benchmark (`benchmark_tool/`, Python, gitignored)
+### Outil de benchmark (`benchmark_tool/`, Python, suivi par git sauf `results/` et `leaderboard*.json`)
 
 - `benchmark.py` — point d'entrée CLI et logique de scoring (règles + juge LLM optionnel via `benchmark-judge:latest`, surchargeable avec `BENCHMARK_JUDGE`)
 - `lib/config.py` — réglages par défaut surchargeables par variable d'env (`OLLAMA_BASE_URL`, `BENCHMARK_TEMPERATURE`, `BENCHMARK_NUM_CTX`, `BENCHMARK_NUM_PREDICT`) ; les trois options de génération sont aussi surchargeables en CLI (`--temperature`, `--num-ctx`, `--num-predict`, passés par la WebUI) et enregistrées avec chaque résultat (`options` du run, du modèle et de chaque test). Le juge garde des réglages fixes (`JUDGE_OPTIONS`)

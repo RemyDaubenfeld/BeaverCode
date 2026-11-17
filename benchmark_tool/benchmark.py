@@ -608,6 +608,9 @@ def benchmark_model(
 # ─── Export JSON ─────────────────────────────────────────────────────────────
 
 def save_results(all_results: list[dict], output_path: str = "benchmark_results.json", quiet: bool = False):
+    # Recrée le dossier s'il a disparu pendant le run (ex. `git rm` de results/ : git supprime
+    # aussi le dossier devenu vide) — sinon des heures de tests sont perdues au moment d'écrire.
+    os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump({
             "generated_at": datetime.now().isoformat(),
