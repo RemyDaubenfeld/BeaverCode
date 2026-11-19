@@ -5,7 +5,7 @@
     <!-- ───────────────────────── Liste ───────────────────────── -->
     <div v-if="view === 'list'">
       <div class="flex items-center justify-between mb-3">
-        <p class="text-xs text-bc-text-muted">{{ totalTestCount }} tests, {{ groupedCategories.length }} groupes</p>
+        <p class="text-xs text-bc-text-secondary">{{ totalTestCount }} tests, {{ groupedCategories.length }} groupes</p>
         <button
           @click="startCreate"
           class="px-3 py-1.5 text-sm rounded-bc border-2 border-bc-border-strong shadow-bc-hard-sm bg-bc-orange text-bc-ink cursor-pointer transition-transform duration-75 active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
@@ -14,17 +14,17 @@
         </button>
       </div>
 
-      <p v-if="loading" class="text-sm text-bc-text-muted">Chargement…</p>
+      <p v-if="loading" class="text-sm text-bc-text-secondary">Chargement…</p>
       <p v-else-if="loadError" class="text-sm text-bc-danger">{{ loadError }}</p>
 
       <div v-else class="max-h-[65vh] overflow-y-auto space-y-4 pr-1">
         <div v-for="group in groupedCategories" :key="group.id">
-          <h3 class="font-display text-xs font-medium uppercase tracking-wide text-bc-text-muted mb-1.5">{{ group.label }}</h3>
+          <h3 class="font-display text-xs font-medium uppercase tracking-wide text-bc-text-secondary mb-1.5">{{ group.label }}</h3>
           <div class="space-y-2">
             <div v-for="category in group.categories" :key="category.id" class="rounded-bc border border-bc-border bg-bc-surface-alt">
               <div class="px-3 py-1.5 text-xs font-medium text-bc-text-secondary border-b border-bc-border">
                 {{ categoryLabels[category.id] ?? category.id }}
-                <span class="text-bc-text-muted">({{ category.tests.length }})</span>
+                <span class="text-bc-text-secondary">({{ category.tests.length }})</span>
               </div>
               <details v-for="test in category.tests" :key="test.id" class="group border-t border-bc-border first:border-t-0">
                 <summary class="flex items-center justify-between gap-2 px-3 py-2 text-sm cursor-pointer select-none">
@@ -34,7 +34,7 @@
                     <ChevronDownIcon class="w-4 h-4 text-bc-text-muted shrink-0 transition-transform group-open:rotate-180" />
                   </span>
                   <span class="flex items-center gap-2 shrink-0">
-                    <button @click.stop.prevent="startEdit(category.id, test)" class="text-xs text-bc-text-muted hover:text-bc-text-primary cursor-pointer">
+                    <button @click.stop.prevent="startEdit(category.id, test)" class="text-xs text-bc-text-secondary hover:text-bc-text-primary cursor-pointer">
                       Modifier
                     </button>
                     <button @click.stop.prevent="remove(test.id)" :disabled="deletingId === test.id" class="text-xs text-bc-danger/80 hover:text-bc-danger disabled:opacity-40 cursor-pointer">
@@ -42,7 +42,7 @@
                     </button>
                   </span>
                 </summary>
-                <div class="px-3 pb-3 text-xs text-bc-text-muted space-y-1.5">
+                <div class="px-3 pb-3 text-xs text-bc-text-secondary space-y-1.5">
                   <p><span class="text-bc-text-secondary">Prompt :</span> <span class="whitespace-pre-wrap">{{ test.prompt }}</span></p>
                   <p v-if="test.checks?.rules?.length"><span class="text-bc-text-secondary">Mots-clés :</span> {{ test.checks.rules.join(', ') }}</p>
                   <p v-if="test.checks?.judge_criteria"><span class="text-bc-text-secondary">Critères juge :</span> {{ test.checks.judge_criteria }}</p>
@@ -61,7 +61,7 @@
 
     <!-- ───────────────────────── Formulaire ───────────────────────── -->
     <div v-else>
-      <button @click="view = 'list'" class="text-xs text-bc-text-muted hover:text-bc-text-primary mb-3 cursor-pointer">← Retour à la liste</button>
+      <button @click="view = 'list'" class="text-xs text-bc-text-secondary hover:text-bc-text-primary mb-3 cursor-pointer">← Retour à la liste</button>
 
       <div class="grid grid-cols-2 gap-3 mb-3">
         <label class="text-xs text-bc-text-secondary">
@@ -127,7 +127,7 @@
       <label v-if="form.category === 'vision'" class="block text-xs text-bc-text-secondary mb-3">
         Images (noms de fichiers, séparés par des virgules)
         <input v-model="form.images" type="text" placeholder="portrait_1.jpg, paysage_1.jpg" class="mt-1 w-full px-2 py-1.5 rounded-bc bg-bc-surface-alt border border-bc-border text-sm text-bc-text-primary font-mono" />
-        <span class="block mt-1 text-bc-text-muted normal-case">Les fichiers doivent déjà être placés dans <code>benchmark_tool/assets/vision/</code></span>
+        <span class="block mt-1 text-bc-text-secondary normal-case">Les fichiers doivent déjà être placés dans <code>benchmark_tool/assets/vision/</code></span>
       </label>
 
       <p v-if="formError" class="text-sm text-bc-danger mb-3">{{ formError }}</p>

@@ -27,21 +27,21 @@
         </div>
 
         <div class="flex flex-wrap items-center gap-2 mt-1.5 text-xs">
-          <span class="text-bc-text-muted">Déchargement dans</span>
+          <span class="text-bc-text-secondary">Déchargement dans</span>
           <span
             class="font-mono"
             :class="remaining(m.expires_at).unlimited ? 'text-bc-green' : 'text-bc-text-primary'"
           >
             {{ remaining(m.expires_at).text }}
           </span>
-          <span class="ml-auto text-bc-text-muted" :title="keepAliveHint">Garder chargé :</span>
+          <span class="ml-auto text-bc-text-secondary" :title="keepAliveHint">Garder chargé :</span>
           <button
             v-for="opt in keepAliveOptions"
             :key="opt.value"
             @click="keepAlive(m.name, opt.value)"
             :disabled="busyName === m.name || remaining(m.expires_at).expired"
             :title="keepAliveHint"
-            class="px-1.5 py-0.5 rounded border border-bc-border font-mono text-bc-text-secondary hover:border-bc-orange hover:text-bc-orange-light disabled:opacity-40 disabled:cursor-not-allowed"
+            class="px-1.5 py-0.5 rounded-md border border-bc-border font-mono text-bc-text-secondary hover:border-bc-orange hover:text-bc-orange-light disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {{ opt.label }}
           </button>
@@ -49,7 +49,7 @@
       </li>
     </ul>
 
-    <p v-if="loadedModels.length" class="mt-3 text-xs text-bc-text-muted">{{ keepAliveHint }}</p>
+    <p v-if="loadedModels.length" class="mt-3 text-xs text-bc-text-secondary">{{ keepAliveHint }}</p>
     <p v-if="actionError" class="mt-3 text-sm text-bc-danger">{{ actionError }}</p>
   </Modal>
 </template>

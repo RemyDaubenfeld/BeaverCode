@@ -9,7 +9,7 @@
         <option value="">Charger un preset…</option>
         <option v-for="p in presets" :key="p.filename" :value="p.filename">{{ presetLabel(p.filename) }}</option>
       </select>
-      <span v-if="presetMessage" class="text-xs text-bc-text-muted">{{ presetMessage }}</span>
+      <span v-if="presetMessage" class="text-xs text-bc-text-secondary">{{ presetMessage }}</span>
     </div>
 
     <div class="space-y-1.5">
@@ -35,7 +35,7 @@
           v-if="canRemove(row)"
           @click="rows.splice(i, 1)"
           title="Retirer"
-          class="shrink-0 text-bc-text-muted hover:text-bc-danger"
+          class="shrink-0 text-bc-text-secondary hover:text-bc-danger"
         >
           <XMarkIcon class="w-4 h-4" />
         </button>
@@ -56,7 +56,7 @@
       </button>
     </div>
 
-    <label class="block text-xs uppercase tracking-wide text-bc-text-muted">
+    <label class="block text-xs uppercase tracking-wide text-bc-text-secondary">
       Prompt système
       <textarea
         v-model="systemPrompt"
@@ -66,7 +66,7 @@
       />
     </label>
 
-    <p class="text-xs text-bc-text-muted leading-relaxed">
+    <p class="text-xs text-bc-text-secondary leading-relaxed">
       Le modèle est recréé avec les nouvelles valeurs, sous le même nom ou un nouveau (instantané : les poids ne sont pas copiés, ils sont partagés sur le disque).
       Ollama ne permet que de <strong class="text-bc-text-secondary">modifier ou ajouter</strong> des paramètres : un paramètre existant ne peut pas être supprimé, et un prompt système vidé est conservé.
     </p>
@@ -88,7 +88,7 @@
     </div>
 
     <div class="space-y-2 rounded-bc border border-bc-border p-3">
-      <span class="block text-xs uppercase tracking-wide text-bc-text-muted">Enregistrer le modèle</span>
+      <span class="block text-xs uppercase tracking-wide text-bc-text-secondary">Enregistrer le modèle</span>
       <label class="flex items-center gap-2 text-sm text-bc-text-secondary cursor-pointer">
         <input v-model="mode" type="radio" value="overwrite" class="accent-bc-orange" />
         Écraser <span class="font-mono text-bc-text-primary">{{ name }}</span>

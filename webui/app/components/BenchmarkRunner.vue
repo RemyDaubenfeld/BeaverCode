@@ -3,8 +3,8 @@
     <!-- 1. Modèles -->
     <section class="mb-6">
       <div class="flex items-center gap-2 mb-2 flex-wrap">
-        <h2 class="font-display text-sm font-semibold uppercase tracking-wide text-bc-text-muted">1. Modèles à tester</h2>
-        <span class="text-xs text-bc-text-muted">
+        <h2 class="font-display text-sm font-semibold uppercase tracking-wide text-bc-text-secondary">1. Modèles à tester</h2>
+        <span class="text-xs text-bc-text-secondary">
           ({{ selectedModels.length }}/{{ modelList?.length ?? 0 }} sélectionnés<template v-if="hiddenSelectedCount">, dont {{ hiddenSelectedCount }} masqué{{ hiddenSelectedCount > 1 ? 's' : '' }}</template>)
         </span>
         <label class="flex items-center gap-1.5 text-xs text-bc-text-secondary cursor-pointer select-none">
@@ -25,9 +25,9 @@
           Non testés uniquement ({{ untestedCount }})
         </label>
       </div>
-      <p v-if="!modelList" class="text-sm text-bc-text-muted">Chargement des modèles…</p>
+      <p v-if="!modelList" class="text-sm text-bc-text-secondary">Chargement des modèles…</p>
       <details v-else class="group rounded-bc border border-bc-border bg-bc-surface-alt">
-        <summary class="flex items-center gap-1.5 px-3 py-2 text-sm text-bc-text-muted cursor-pointer select-none">
+        <summary class="flex items-center gap-1.5 px-3 py-2 text-sm text-bc-text-secondary cursor-pointer select-none">
           <span>Sélectionner modèles</span>
           <ChevronDownIcon class="w-4 h-4 text-bc-text-muted shrink-0 transition-transform group-open:rotate-180" />
         </summary>
@@ -49,7 +49,7 @@
                 {{ scores[model.name].avg_score.toFixed(1) }}
               </span>
             </label>
-            <p v-if="!visibleModels.length" class="col-span-full text-xs text-bc-text-muted">Tous les modèles ont déjà été testés.</p>
+            <p v-if="!visibleModels.length" class="col-span-full text-xs text-bc-text-secondary">Tous les modèles ont déjà été testés.</p>
           </div>
         </div>
       </details>
@@ -58,8 +58,8 @@
     <!-- 2. Tests -->
     <section class="mb-6">
       <div class="flex items-center gap-2 mb-2 flex-wrap">
-        <h2 class="font-display text-sm font-semibold uppercase tracking-wide text-bc-text-muted">2. Tests à lancer</h2>
-        <span class="text-xs text-bc-text-muted">({{ selectedTests.length }}/{{ availableTestCount }} disponibles)</span>
+        <h2 class="font-display text-sm font-semibold uppercase tracking-wide text-bc-text-secondary">2. Tests à lancer</h2>
+        <span class="text-xs text-bc-text-secondary">({{ selectedTests.length }}/{{ availableTestCount }} disponibles)</span>
         <label class="flex items-center gap-1.5 text-xs text-bc-text-secondary cursor-pointer select-none">
           <input
             type="checkbox"
@@ -77,10 +77,10 @@
           Gérer les tests
         </button>
       </div>
-      <p v-if="!manifest" class="text-sm text-bc-text-muted">Chargement des tests…</p>
+      <p v-if="!manifest" class="text-sm text-bc-text-secondary">Chargement des tests…</p>
       <div v-else class="space-y-4">
         <div v-for="group in capabilityGroups" :key="group.id">
-          <h3 class="font-display text-xs font-medium uppercase tracking-wide text-bc-text-muted mb-1.5">{{ group.label }}</h3>
+          <h3 class="font-display text-xs font-medium uppercase tracking-wide text-bc-text-secondary mb-1.5">{{ group.label }}</h3>
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
             <details
               v-for="category in group.categories"
@@ -89,14 +89,14 @@
               :class="isCategoryAvailable(category) ? 'bg-bc-surface-alt' : 'bg-bc-surface-alt/40 opacity-40'"
             >
               <summary
-                class="flex items-center gap-1.5 px-3 py-2 text-sm text-bc-text-muted select-none"
+                class="flex items-center gap-1.5 px-3 py-2 text-sm text-bc-text-secondary select-none"
                 :class="isCategoryAvailable(category) ? 'cursor-pointer' : 'cursor-default'"
                 @click="onCategorySummaryClick(category, $event)"
               >
                 <span class="flex items-center gap-1.5">
                   <component :is="categoryIcons[category.id] ?? defaultCategoryIcon" class="w-4 h-4 text-bc-text-muted shrink-0" />
                   {{ categoryLabels[category.id] ?? category.id }}
-                  <span class="text-bc-text-muted text-xs">({{ countSelected(category) }}/{{ category.tests.length }})</span>
+                  <span class="text-bc-text-secondary text-xs">({{ countSelected(category) }}/{{ category.tests.length }})</span>
                 </span>
                 <ChevronDownIcon
                   v-if="isCategoryAvailable(category)"
@@ -138,7 +138,7 @@
 
     <!-- 3. Juge -->
     <section class="mb-6">
-      <h2 class="font-display text-sm font-semibold uppercase tracking-wide text-bc-text-muted mb-2">3. Juge LLM</h2>
+      <h2 class="font-display text-sm font-semibold uppercase tracking-wide text-bc-text-secondary mb-2">3. Juge LLM</h2>
       <div class="flex items-center gap-3">
         <label class="flex items-center gap-1.5 text-sm text-bc-text-secondary cursor-pointer select-none">
           <input type="checkbox" v-model="judgeEnabled" class="accent-bc-orange" :disabled="running" />
@@ -147,7 +147,7 @@
         <select
           v-model="judgeModel"
           :disabled="!judgeEnabled || running"
-          class="px-2 py-1 text-sm rounded-bc bg-bc-surface-alt border border-bc-border text-bc-text-muted font-mono disabled:opacity-40"
+          class="px-2 py-1 text-sm rounded-bc bg-bc-surface-alt border border-bc-border text-bc-text-secondary font-mono disabled:opacity-40"
         >
           <option v-for="model in modelList" :key="model.name" :value="model.name">{{ model.name }}</option>
         </select>
@@ -160,7 +160,7 @@
     <!-- 4. Réglages de génération -->
     <section v-if="options" class="mb-6">
       <div class="flex items-center gap-1.5 mb-2">
-        <h2 class="font-display text-sm font-semibold uppercase tracking-wide text-bc-text-muted">4. Réglages de génération</h2>
+        <h2 class="font-display text-sm font-semibold uppercase tracking-wide text-bc-text-secondary">4. Réglages de génération</h2>
         <!-- info-bulle explicative : à quoi servent ces réglages (et ce qu'ils ne font PAS). Affichée au
              survol ET au focus clavier (Tab), un title natif ne permettant ni gras ni liste -->
         <span class="group relative inline-flex">
@@ -168,7 +168,7 @@
             type="button"
             aria-label="À quoi servent les réglages de génération ?"
             aria-describedby="bench-options-help"
-            class="text-bc-text-muted hover:text-bc-info focus:text-bc-info focus:outline-none cursor-help"
+            class="text-bc-text-secondary hover:text-bc-info focus:text-bc-info cursor-help"
           >
             <InformationCircleIcon class="w-4 h-4" aria-hidden="true" />
           </button>
@@ -192,7 +192,7 @@
 
       <div class="flex flex-wrap items-end gap-x-8 gap-y-3">
         <div>
-          <label class="block text-xs text-bc-text-muted mb-1" for="bench-temperature">Température</label>
+          <label class="block text-xs text-bc-text-secondary mb-1" for="bench-temperature">Température</label>
           <div class="flex items-center gap-2">
             <input
               id="bench-temperature"
@@ -209,7 +209,7 @@
         </div>
 
         <div>
-          <label class="block text-xs text-bc-text-muted mb-1" for="bench-num-ctx" title="Taille du contexte en tokens : plus elle est grande, plus le KV cache prend de VRAM">Contexte (num_ctx)</label>
+          <label class="block text-xs text-bc-text-secondary mb-1" for="bench-num-ctx" title="Taille du contexte en tokens : plus elle est grande, plus le KV cache prend de VRAM">Contexte (num_ctx)</label>
           <div class="flex items-center gap-2">
             <input
               id="bench-num-ctx"
@@ -232,7 +232,7 @@
         </div>
 
         <div>
-          <label class="block text-xs text-bc-text-muted mb-1" for="bench-num-predict" title="Plafond de tokens générés par réponse : coupe les modèles qui ne s'arrêtent jamais">Tokens max par réponse</label>
+          <label class="block text-xs text-bc-text-secondary mb-1" for="bench-num-predict" title="Plafond de tokens générés par réponse : coupe les modèles qui ne s'arrêtent jamais">Tokens max par réponse</label>
           <input
             id="bench-num-predict"
             v-model.number="options.num_predict"
@@ -246,12 +246,12 @@
           v-if="optionsChanged"
           @click="resetOptions"
           :disabled="running"
-          class="text-xs text-bc-text-muted hover:text-bc-text-secondary underline"
+          class="text-xs text-bc-text-secondary hover:text-bc-text-primary underline"
         >
           Valeurs par défaut
         </button>
       </div>
-      <p class="mt-2 text-xs text-bc-text-muted">
+      <p class="mt-2 text-xs text-bc-text-secondary">
         Le juge garde ses propres réglages fixes. Les réglages sont enregistrés avec chaque résultat.
         <span v-if="optionsChanged" class="text-bc-warning">
           Réglages différents des valeurs par défaut : le comparatif mélangera des tests passés dans des conditions différentes.
@@ -262,7 +262,7 @@
 
     <!-- Lancement -->
     <div class="flex items-center gap-3 mb-6">
-      <p v-if="running" class="text-xs text-bc-text-muted">
+      <p v-if="running" class="text-xs text-bc-text-secondary">
         
       </p>
       <button
@@ -284,7 +284,7 @@
      
     </div>
 
-    <p v-if="excludedCount > 0 && !running" class="-mt-4 mb-6 text-xs text-bc-text-muted">
+    <p v-if="excludedCount > 0 && !running" class="-mt-4 mb-6 text-xs text-bc-text-secondary">
       {{ excludedCount }} combinaison{{ excludedCount > 1 ? 's' : '' }} modèle × test écartée{{ excludedCount > 1 ? 's' : '' }} :
       le modèle n'a pas la capacité requise (ex. vision, appel d'outils).
     </p>

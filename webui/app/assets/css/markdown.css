@@ -1,0 +1,53 @@
+/* Rendu Markdown des réponses du chat (contenu injecté par v-html : styles globaux, préfixés .bc-markdown) */
+
+.bc-markdown { line-height: 1.65; overflow-wrap: anywhere; }
+.bc-markdown > * + * { margin-top: 0.75em; }
+.bc-markdown h1, .bc-markdown h2, .bc-markdown h3, .bc-markdown h4 { font-weight: 600; color: var(--color-bc-text-primary); margin-top: 1.1em; }
+.bc-markdown h1 { font-size: 1.25rem; }
+.bc-markdown h2 { font-size: 1.125rem; }
+.bc-markdown h3, .bc-markdown h4 { font-size: 1rem; }
+.bc-markdown strong { color: var(--color-bc-text-primary); font-weight: 600; }
+.bc-markdown a { color: var(--color-bc-orange-light); text-decoration: underline; text-underline-offset: 2px; }
+.bc-markdown a:hover { color: var(--color-bc-orange); }
+.bc-markdown ul { list-style: disc; padding-left: 1.4em; }
+.bc-markdown ol { list-style: decimal; padding-left: 1.4em; }
+.bc-markdown li + li { margin-top: 0.25em; }
+.bc-markdown blockquote { border-left: 3px solid var(--color-bc-orange); padding-left: 0.8em; color: var(--color-bc-text-secondary); }
+.bc-markdown hr { border-color: var(--color-bc-border); }
+.bc-markdown table { border-collapse: collapse; display: block; overflow-x: auto; font-size: 0.875rem; }
+.bc-markdown th, .bc-markdown td { border: 1px solid var(--color-bc-border); padding: 0.3em 0.7em; text-align: left; }
+.bc-markdown th { background: var(--color-bc-surface-alt); color: var(--color-bc-text-primary); }
+
+/* code en ligne */
+.bc-markdown :not(pre) > code {
+  font-family: var(--font-mono); font-size: 0.85em;
+  background: var(--color-bc-surface-alt); border: 1px solid var(--color-bc-border);
+  border-radius: 6px; padding: 0.1em 0.35em; color: var(--color-bc-orange-light);
+}
+
+/* blocs de code : bordure « sticker » de la charte */
+.bc-markdown pre.bc-code {
+  border: 2px solid var(--color-bc-border-strong); border-radius: var(--radius-bc);
+  background: var(--color-bc-ink); box-shadow: var(--shadow-bc-hard-sm); overflow: hidden;
+}
+.bc-markdown .bc-code-head {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0.3em 0.8em; background: var(--color-bc-surface-alt); border-bottom: 1px solid var(--color-bc-border);
+  font-family: var(--font-mono); font-size: 0.75rem; color: var(--color-bc-text-secondary);
+}
+.bc-markdown .bc-code-head button { cursor: pointer; color: var(--color-bc-orange-light); border-radius: 6px; padding: 0 0.3em; }
+.bc-markdown .bc-code-head button:hover { color: var(--color-bc-text-primary); }
+.bc-markdown .bc-code-head button:focus-visible { outline: 2px solid var(--color-bc-orange-light); outline-offset: 1px; }
+.bc-markdown pre.bc-code code {
+  display: block; overflow-x: auto; padding: 0.8em 1em;
+  font-family: var(--font-mono); font-size: 0.8125rem; line-height: 1.55; color: var(--color-bc-text-primary);
+}
+
+/* coloration syntaxique, palette de la charte */
+.hljs-comment, .hljs-quote { color: var(--color-bc-text-muted); font-style: italic; }
+.hljs-keyword, .hljs-selector-tag, .hljs-literal, .hljs-type { color: var(--color-bc-orange-light); }
+.hljs-string, .hljs-regexp, .hljs-addition, .hljs-symbol { color: var(--color-bc-green); }
+.hljs-number, .hljs-built_in, .hljs-meta { color: var(--color-bc-warning); }
+.hljs-title, .hljs-section, .hljs-function .hljs-title { color: var(--color-bc-info); }
+.hljs-attr, .hljs-attribute, .hljs-variable, .hljs-template-variable, .hljs-params { color: var(--color-bc-text-secondary); }
+.hljs-deletion { color: var(--color-bc-danger); }

@@ -1,12 +1,12 @@
 <template>
   <div>
-    <p v-if="loading" class="text-sm text-bc-text-muted">Lecture du dépôt HuggingFace…</p>
+    <p v-if="loading" class="text-sm text-bc-text-secondary">Lecture du dépôt HuggingFace…</p>
     <p v-else-if="error" class="text-sm text-bc-danger">{{ error }}</p>
 
     <template v-else-if="info">
       <div class="mb-3 rounded-bc border border-bc-border p-2">
         <div class="font-mono text-sm text-bc-text-primary break-all">hf.co/{{ info.repo }}</div>
-        <div class="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-xs text-bc-text-muted">
+        <div class="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-xs text-bc-text-secondary">
           <span v-if="info.architecture">Architecture <span class="font-mono text-bc-text-secondary">{{ info.architecture }}</span></span>
           <span v-if="info.total_params">Paramètres <span class="font-mono text-bc-text-secondary">{{ formatParams(info.total_params) }}</span></span>
           <span v-if="isMoe">MoE <span class="font-mono text-bc-text-secondary">{{ formatParams(info.active_params) }} actifs</span></span>
@@ -18,7 +18,7 @@
         </p>
       </div>
 
-      <p v-if="!info.files.length" class="text-sm text-bc-text-muted">
+      <p v-if="!info.files.length" class="text-sm text-bc-text-secondary">
         Aucun fichier GGUF dans ce dépôt (Ollama ne télécharge depuis HuggingFace que des modèles au format GGUF ; cherche un dépôt dont le nom finit souvent par « -GGUF »).
       </p>
 
@@ -37,7 +37,7 @@
             :show-size="false"
           />
 
-          <span v-if="f.split" class="shrink-0 text-xs text-bc-text-muted" title="Ollama ne sait pas encore télécharger un GGUF découpé en plusieurs fichiers depuis HuggingFace">
+          <span v-if="f.split" class="shrink-0 text-xs text-bc-text-secondary" title="Ollama ne sait pas encore télécharger un GGUF découpé en plusieurs fichiers depuis HuggingFace">
             découpé, non supporté
           </span>
           <template v-else>
@@ -45,14 +45,14 @@
               v-if="isPulling(f)"
               @click="cancelPull(tagFor(f))"
               title="Annuler le téléchargement"
-              class="shrink-0 px-2 py-0.5 text-xs rounded border-2 border-bc-border-strong bg-bc-surface text-bc-danger shadow-bc-hard-sm transition-transform duration-75 hover:bg-bc-surface-alt active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
+              class="shrink-0 px-2 py-0.5 text-xs rounded-md border-2 border-bc-border-strong bg-bc-surface text-bc-danger shadow-bc-hard-sm transition-transform duration-75 hover:bg-bc-surface-alt active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
             >
               Annuler
             </button>
             <button
               @click="pull(f)"
               :disabled="isPulling(f) || isInstalled(f)"
-              class="shrink-0 w-24 px-2 py-0.5 text-xs rounded border-2 border-bc-border-strong bg-bc-orange text-bc-ink shadow-bc-hard-sm transition-transform duration-75 hover:bg-bc-orange-dark active:translate-x-0.5 active:translate-y-0.5 active:shadow-none disabled:border-bc-border disabled:bg-bc-surface-alt disabled:text-bc-text-muted disabled:shadow-none disabled:cursor-not-allowed"
+              class="shrink-0 w-24 px-2 py-0.5 text-xs rounded-md border-2 border-bc-border-strong bg-bc-orange text-bc-ink shadow-bc-hard-sm transition-transform duration-75 hover:bg-bc-orange-dark active:translate-x-0.5 active:translate-y-0.5 active:shadow-none disabled:border-bc-border disabled:bg-bc-surface-alt disabled:text-bc-text-muted disabled:shadow-none disabled:cursor-not-allowed"
             >
               <span v-if="isInstalled(f)">Installé</span>
               <span v-else-if="isPulling(f) && pulls[tagFor(f)].queued">En attente</span>

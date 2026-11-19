@@ -2,25 +2,25 @@
   <div>
     <!-- Historique des runs -->
     <section class="mb-8">
-      <h2 class="font-display text-sm font-semibold uppercase tracking-wide text-bc-text-muted mb-2">Runs enregistrés</h2>
+      <h2 class="font-display text-sm font-semibold uppercase tracking-wide text-bc-text-secondary mb-2">Runs enregistrés</h2>
 
-      <p v-if="loadingRuns" class="text-sm text-bc-text-muted">Chargement…</p>
+      <p v-if="loadingRuns" class="text-sm text-bc-text-secondary">Chargement…</p>
       <p v-else-if="runsError" class="text-sm text-bc-danger">{{ runsError }}</p>
-      <p v-else-if="runs.length === 0" class="text-sm text-bc-text-muted">Aucun run enregistré pour l'instant — lance un benchmark depuis l'onglet Tests.</p>
+      <p v-else-if="runs.length === 0" class="text-sm text-bc-text-secondary">Aucun run enregistré pour l'instant — lance un benchmark depuis l'onglet Tests.</p>
 
       <div v-else class="max-h-[30vh] overflow-y-auto rounded-bc border-2 border-bc-border-strong bg-bc-surface shadow-bc-hard divide-y divide-bc-border">
         <div v-for="run in runs" :key="run.id" class="flex items-center justify-between gap-3 px-3 py-2 text-sm">
           <div class="min-w-0">
             <span class="text-bc-text-primary">{{ formatDate(run.generated_at) }}</span>
-            <span class="ml-2 text-xs text-bc-text-muted font-mono">
+            <span class="ml-2 text-xs text-bc-text-secondary font-mono">
               {{ run.models.length }} modèle{{ run.models.length > 1 ? 's' : '' }} — {{ run.models.map((m) => m.name).join(', ') }}
             </span>
           </div>
           <div class="flex items-center gap-2 shrink-0">
-            <button @click="viewingRunId = run.id" title="Voir les résultats" class="p-1.5 rounded text-bc-text-muted hover:text-bc-text-primary hover:bg-bc-surface-alt cursor-pointer">
+            <button @click="viewingRunId = run.id" title="Voir les résultats" class="p-1.5 rounded-md text-bc-text-secondary hover:text-bc-text-primary hover:bg-bc-surface-alt cursor-pointer">
               <EyeIcon class="w-4 h-4" />
             </button>
-            <button @click="removeRun(run.id)" :disabled="deletingId === run.id" title="Supprimer le fichier" class="p-1.5 rounded text-bc-danger/80 hover:text-bc-danger hover:bg-bc-surface-alt disabled:opacity-40 cursor-pointer">
+            <button @click="removeRun(run.id)" :disabled="deletingId === run.id" title="Supprimer le fichier" class="p-1.5 rounded-md text-bc-danger/80 hover:text-bc-danger hover:bg-bc-surface-alt disabled:opacity-40 cursor-pointer">
               <TrashIcon class="w-4 h-4" />
             </button>
           </div>
@@ -32,7 +32,7 @@
     <!-- Comparatif -->
     <section>
       <div class="flex items-center gap-2 mb-3 flex-wrap">
-        <h2 class="font-display text-sm font-semibold uppercase tracking-wide text-bc-text-muted">Comparatif des modèles</h2>
+        <h2 class="font-display text-sm font-semibold uppercase tracking-wide text-bc-text-secondary">Comparatif des modèles</h2>
         <button
           v-if="missingTotal"
           @click="completing = 'all'"
@@ -48,14 +48,14 @@
           <button
             @click="comparisonMode = 'global'"
             class="font-display px-3 py-1 text-xs cursor-pointer"
-            :class="comparisonMode === 'global' ? 'bg-bc-orange text-bc-ink' : 'text-bc-text-muted hover:bg-bc-surface-alt'"
+            :class="comparisonMode === 'global' ? 'bg-bc-orange text-bc-ink' : 'text-bc-text-secondary hover:bg-bc-surface-alt'"
           >
             Global
           </button>
           <button
             @click="comparisonMode = 'capability'"
             class="font-display px-3 py-1 text-xs cursor-pointer"
-            :class="comparisonMode === 'capability' ? 'bg-bc-orange text-bc-ink' : 'text-bc-text-muted hover:bg-bc-surface-alt'"
+            :class="comparisonMode === 'capability' ? 'bg-bc-orange text-bc-ink' : 'text-bc-text-secondary hover:bg-bc-surface-alt'"
           >
             Par capacité
           </button>
@@ -66,25 +66,25 @@
       <div v-if="completing && Object.keys(completionPlan).length" class="mb-3 rounded-bc border-2 border-bc-border-strong bg-bc-surface px-3 py-2.5 text-xs shadow-bc-hard">
         <p class="font-display mb-2 text-sm font-semibold text-bc-text-primary">
           Compléter {{ completionCount }} test{{ completionCount > 1 ? 's' : '' }}
-          <span class="font-normal text-bc-text-muted">— durée estimée ≈ {{ formatDuration(completionEstimate.total) }}<template v-if="completionEstimate.unknown">, plus {{ completionEstimate.unknown }} test{{ completionEstimate.unknown > 1 ? 's' : '' }} sans référence</template></span>
+          <span class="font-normal text-bc-text-secondary">— durée estimée ≈ {{ formatDuration(completionEstimate.total) }}<template v-if="completionEstimate.unknown">, plus {{ completionEstimate.unknown }} test{{ completionEstimate.unknown > 1 ? 's' : '' }} sans référence</template></span>
         </p>
         <table class="mb-2 w-full font-mono">
           <tbody>
             <tr v-for="(ids, model) in completionPlan" :key="model" class="border-t border-bc-border">
               <td class="py-1 pr-3 text-bc-text-secondary">{{ model }}</td>
-              <td class="py-1 pr-3 text-bc-text-muted whitespace-nowrap">{{ ids.length }} test{{ ids.length > 1 ? 's' : '' }}</td>
-              <td class="py-1 pr-3 text-bc-text-muted whitespace-nowrap">
+              <td class="py-1 pr-3 text-bc-text-secondary whitespace-nowrap">{{ ids.length }} test{{ ids.length > 1 ? 's' : '' }}</td>
+              <td class="py-1 pr-3 text-bc-text-secondary whitespace-nowrap">
                 {{ completionEstimate.perModel[model] ? '≈ ' + formatDuration(completionEstimate.perModel[model]) : 'durée inconnue' }}
               </td>
-              <td class="py-1 text-bc-text-muted truncate max-w-md" :title="ids.join(', ')">{{ ids.join(', ') }}</td>
+              <td class="py-1 text-bc-text-secondary truncate max-w-md" :title="ids.join(', ')">{{ ids.join(', ') }}</td>
             </tr>
           </tbody>
         </table>
-        <p class="mb-1 text-bc-text-muted">
+        <p class="mb-1 text-bc-text-secondary">
           Réglages par défaut (Paramétrage) : <span class="font-mono text-bc-text-secondary">{{ formatRunOptions(manifest?.default_options) }}</span>
           · juge : <span class="font-mono text-bc-text-secondary">{{ completionJudge ?? 'aucun (règles uniquement)' }}</span>
         </p>
-        <p class="mb-2 text-bc-text-muted">
+        <p class="mb-2 text-bc-text-secondary">
           Estimation : durée moyenne des tests déjà passés par le modèle (même catégorie si possible), hors temps du juge.
           Les tests de réflexion imposent leurs propres limites (8192 tokens, contexte 9216).
         </p>
@@ -116,7 +116,7 @@
         <button
           @click="capabilityFilter = null"
           class="font-display flex items-center gap-1 px-2.5 py-1 text-xs rounded-bc border-2 cursor-pointer"
-          :class="capabilityFilter === null ? 'border-bc-border-strong bg-bc-orange text-bc-ink' : 'border-bc-border text-bc-text-muted hover:bg-bc-surface-alt'"
+          :class="capabilityFilter === null ? 'border-bc-border-strong bg-bc-orange text-bc-ink' : 'border-bc-border text-bc-text-secondary hover:bg-bc-surface-alt'"
         >
           Toutes
         </button>
@@ -125,17 +125,17 @@
           :key="id"
           @click="capabilityFilter = id"
           class="font-display flex items-center gap-1 px-2.5 py-1 text-xs rounded-bc border-2 cursor-pointer"
-          :class="capabilityFilter === id ? 'border-bc-border-strong bg-bc-orange text-bc-ink' : 'border-bc-border text-bc-text-muted hover:bg-bc-surface-alt'"
+          :class="capabilityFilter === id ? 'border-bc-border-strong bg-bc-orange text-bc-ink' : 'border-bc-border text-bc-text-secondary hover:bg-bc-surface-alt'"
         >
           <component :is="capabilityGroupIcons[id] ?? defaultCategoryIcon" class="w-3.5 h-3.5 shrink-0" />
           {{ capabilityGroupLabels[id] ?? id }}
         </button>
       </div>
 
-      <p v-if="loadingComparison" class="text-sm text-bc-text-muted">Chargement…</p>
+      <p v-if="loadingComparison" class="text-sm text-bc-text-secondary">Chargement…</p>
       <p v-else-if="comparisonError" class="text-sm text-bc-danger">{{ comparisonError }}</p>
-      <p v-else-if="comparison.length === 0" class="text-sm text-bc-text-muted">Pas encore de modèle testé.</p>
-      <p v-else-if="filteredComparison.length === 0" class="text-sm text-bc-text-muted">Aucun modèle ne correspond à « {{ modelSearch }} ».</p>
+      <p v-else-if="comparison.length === 0" class="text-sm text-bc-text-secondary">Pas encore de modèle testé.</p>
+      <p v-else-if="filteredComparison.length === 0" class="text-sm text-bc-text-secondary">Aucun modèle ne correspond à « {{ modelSearch }} ».</p>
 
       <div v-else class="max-h-[60vh] overflow-y-auto pr-1">
       <!-- Vue globale : une paire de barres (score, tok/s) par modèle -->
@@ -146,38 +146,38 @@
             <span class="flex items-center gap-2">
               <span :class="scoreColorClass(m.avg_score)" class="text-xs font-medium">
                 {{ m.avg_score }}/5 — {{ m.verdict }}
-                <span class="text-bc-text-muted font-normal">({{ m.total_tests }} test{{ m.total_tests > 1 ? 's' : '' }})</span>
+                <span class="text-bc-text-secondary font-normal">({{ m.total_tests }} test{{ m.total_tests > 1 ? 's' : '' }})</span>
               </span>
               <button
                 v-if="missingByModel[m.model]"
                 @click="completing = m.model"
                 :disabled="running"
                 :title="`Compléter ${missingByModel[m.model].length} test${missingByModel[m.model].length > 1 ? 's' : ''} manquant${missingByModel[m.model].length > 1 ? 's' : ''}`"
-                class="flex items-center gap-0.5 p-1 rounded text-bc-green hover:text-bc-text-primary hover:bg-bc-surface disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                class="flex items-center gap-0.5 p-1 rounded-md text-bc-green hover:text-bc-text-primary hover:bg-bc-surface disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               >
                 <PlusCircleIcon class="w-4 h-4" />
                 <span class="font-mono text-xs">{{ missingByModel[m.model].length }}</span>
               </button>
-              <button @click="viewingTestsModel = m.model" title="Voir le détail des tests" class="p-1 rounded text-bc-text-muted hover:text-bc-text-primary hover:bg-bc-surface cursor-pointer">
+              <button @click="viewingTestsModel = m.model" title="Voir le détail des tests" class="p-1 rounded-md text-bc-text-secondary hover:text-bc-text-primary hover:bg-bc-surface cursor-pointer">
                 <ListBulletIcon class="w-4 h-4" />
               </button>
-              <button @click="removeModelFromComparison(m.model)" :disabled="deletingModel === m.model" title="Retirer du comparatif" class="p-1 rounded text-bc-danger/80 hover:text-bc-danger hover:bg-bc-surface disabled:opacity-40 cursor-pointer">
+              <button @click="removeModelFromComparison(m.model)" :disabled="deletingModel === m.model" title="Retirer du comparatif" class="p-1 rounded-md text-bc-danger/80 hover:text-bc-danger hover:bg-bc-surface disabled:opacity-40 cursor-pointer">
                 <TrashIcon class="w-4 h-4" />
               </button>
             </span>
           </div>
           <div class="flex items-center gap-2 mb-1">
-            <span class="w-14 shrink-0 text-xs text-bc-text-muted">Score</span>
+            <span class="w-14 shrink-0 text-xs text-bc-text-secondary">Score</span>
             <div class="h-2 flex-1 rounded-full bg-bc-surface-alt border border-bc-border overflow-hidden">
               <div class="h-full rounded-full" :class="scoreBarBg(m.avg_score)" :style="{ width: (m.avg_score / 5) * 100 + '%' }" />
             </div>
           </div>
           <div class="flex items-center gap-2">
-            <span class="w-14 shrink-0 text-xs text-bc-text-muted">Tok/s</span>
+            <span class="w-14 shrink-0 text-xs text-bc-text-secondary">Tok/s</span>
             <div class="h-2 flex-1 rounded-full bg-bc-surface-alt border border-bc-border overflow-hidden">
               <div class="h-full rounded-full bg-bc-info" :style="{ width: tokensBarWidth(m.avg_tokens_per_sec) + '%' }" />
             </div>
-            <span class="w-16 shrink-0 text-right text-xs text-bc-text-muted font-mono">{{ m.avg_tokens_per_sec }} tok/s</span>
+            <span class="w-16 shrink-0 text-right text-xs text-bc-text-secondary font-mono">{{ m.avg_tokens_per_sec }} tok/s</span>
           </div>
         </div>
       </div>
@@ -185,9 +185,9 @@
       <!-- Vue par capacité : un groupe de barres (une par modèle) pour chaque capacité,
            filtrable sur une seule capacité via capabilityFilter -->
       <div v-else class="space-y-5">
-        <p v-if="filteredCapabilityBreakdown.length === 0" class="text-sm text-bc-text-muted">Pas de résultat pour cette capacité.</p>
+        <p v-if="filteredCapabilityBreakdown.length === 0" class="text-sm text-bc-text-secondary">Pas de résultat pour cette capacité.</p>
         <div v-for="group in filteredCapabilityBreakdown" :key="group.id">
-          <h3 class="font-display flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-bc-text-muted mb-1.5">
+          <h3 class="font-display flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-bc-text-secondary mb-1.5">
             <component :is="capabilityGroupIcons[group.id] ?? defaultCategoryIcon" class="w-4 h-4 shrink-0" />
             {{ capabilityGroupLabels[group.id] ?? group.id }}
           </h3>
@@ -197,20 +197,20 @@
                 <span class="flex min-w-0 items-center gap-2">
                   <span
                     class="shrink-0 w-6 text-right font-mono"
-                    :class="entry.rank === 1 ? 'font-semibold text-bc-orange-light' : 'text-bc-text-muted'"
+                    :class="entry.rank === 1 ? 'font-semibold text-bc-orange-light' : 'text-bc-text-secondary'"
                     :title="entry.rank === 1 ? `Meilleur modèle en ${capabilityGroupLabels[group.id] ?? group.id}` : `${entry.rank}e en ${capabilityGroupLabels[group.id] ?? group.id}`"
                   >#{{ entry.rank }}</span>
                   <span class="truncate font-mono text-bc-text-secondary" :title="entry.model">{{ entry.model }}</span>
                 </span>
                 <span class="shrink-0 whitespace-nowrap flex items-center gap-1.5">
                   <span :class="scoreColorClass(entry.avgScore)" class="font-medium">{{ entry.avgScore.toFixed(1) }}/5</span>
-                  <span class="text-bc-text-muted font-mono">
+                  <span class="text-bc-text-secondary font-mono">
                     — {{ entry.avgTokensPerSec.toFixed(1) }} tok/s ({{ entry.testCount }} test{{ entry.testCount > 1 ? 's' : '' }})
                   </span>
-                  <button @click="viewingTestsModel = entry.model" title="Voir le détail des tests" class="p-1 rounded text-bc-text-muted hover:text-bc-text-primary hover:bg-bc-surface cursor-pointer">
+                  <button @click="viewingTestsModel = entry.model" title="Voir le détail des tests" class="p-1 rounded-md text-bc-text-secondary hover:text-bc-text-primary hover:bg-bc-surface cursor-pointer">
                     <ListBulletIcon class="w-3.5 h-3.5" />
                   </button>
-                  <button @click="removeModelFromComparison(entry.model)" :disabled="deletingModel === entry.model" title="Retirer du comparatif" class="p-1 rounded text-bc-danger/80 hover:text-bc-danger hover:bg-bc-surface disabled:opacity-40 cursor-pointer">
+                  <button @click="removeModelFromComparison(entry.model)" :disabled="deletingModel === entry.model" title="Retirer du comparatif" class="p-1 rounded-md text-bc-danger/80 hover:text-bc-danger hover:bg-bc-surface disabled:opacity-40 cursor-pointer">
                     <TrashIcon class="w-3.5 h-3.5" />
                   </button>
                 </span>

@@ -44,15 +44,17 @@ Cette séparation (Nitro → Ollama direct pour la gestion des modèles, Nitro �
 
 ### Structure de `webui/` (Nuxt 4 + Vue 3 + Tailwind v4)
 
-- `app/pages/` — pages routées : `index.vue` (dashboard/monitoring), `models.vue`, `benchmark.vue`, `chat.vue`, `settings.vue`, `logs.vue`
-- `app/components/` — composants UI, notamment la famille de modales du benchmark (`BenchmarkRunner.vue`, `BenchmarkResultsView.vue`, `BenchmarkResultsModal.vue`, `BenchmarkRunViewModal.vue`, `BenchmarkModelTestsModal.vue`, `TestsManagerModal.vue`) et les modales de gestion de modèles (`LibrarySearchModal.vue` pour la bibliothèque Ollama, `HuggingFaceModal.vue` + `HuggingFaceRepo.vue` + `GgufImport.vue` pour HuggingFace et l'import de GGUF local, `ModelDetailsModal.vue` + `ModelParametersEditor.vue` pour la fiche d'un modèle — modification des paramètres, copie, renommage, presets —, `LoadedModelsModal.vue`)
-- `app/composables/` — logique réactive partagée (`useModels.js`, `useBenchmarkRun.js`, `useBenchmarkFormat.js`, `useTestCategories.js`, `useHardware.js`, `useSystem.js`)
-- `server/api/` — endpoints HTTP Nitro, groupés par domaine (`benchmark/`, `import/`, `library/`, `model/`, `modelfiles/`)
-- `server/services/` — la logique réelle derrière chaque groupe d'API (`ollama.service.ts`, `benchmark.service.ts`, `import.service.ts`, `library.service.ts`, `modelfile.service.ts`, `logs.service.ts`, `results.service.ts`, `testsBank.service.ts`)
+- `app/pages/` — pages routées : `webui.vue` (chat manuel), `models.vue`, `benchmark.vue`, `settings.vue`, `logs.vue` (le monitoring est dans la barre globale `Monitoring.vue`, visible sur toutes les pages)
+- `app/components/` — composants UI, notamment la famille de modales du benchmark (`BenchmarkRunner.vue`, `BenchmarkResultsView.vue`, `BenchmarkResultsModal.vue`, `BenchmarkRunViewModal.vue`, `BenchmarkModelTestsModal.vue`, `TestsManagerModal.vue`) et les modales de gestion de modèles (`LibrarySearchModal.vue` pour la bibliothèque Ollama, `HuggingFaceModal.vue` + `HuggingFaceRepo.vue` + `GgufImport.vue` pour HuggingFace et l'import de GGUF local, `ModelDetailsModal.vue` + `ModelParametersEditor.vue` pour la fiche d'un modèle — modification des paramètres, copie, renommage, presets —, `LoadedModelsModal.vue`) et celles du chat (`ChatMessage.vue`, `ChatSettings.vue`, `ChatConversationList.vue`)
+- `app/composables/` — logique réactive partagée (`useModels.js`, `useChat.js`, `useBenchmarkRun.js`, `useBenchmarkFormat.js`, `useTestCategories.js`, `useHardware.js`, `useSystem.js`)
+- `server/api/` — endpoints HTTP Nitro, groupés par domaine (`benchmark/`, `chat/`, `import/`, `library/`, `model/`, `modelfiles/`)
+- `server/services/` — la logique réelle derrière chaque groupe d'API (`ollama.service.ts`, `chat.service.ts`, `benchmark.service.ts`, `import.service.ts`, `library.service.ts`, `modelfile.service.ts`, `logs.service.ts`, `results.service.ts`, `testsBank.service.ts`)
 - `server/types/` — types TS partagés (`benchmark.ts`, `library.ts`)
 - Réglages de la WebUI (URL d'Ollama, juge et options par défaut du benchmark) : `server/services/settings.service.ts`, fichier `webui/.data/settings.json` (non suivi par git). **Toujours appeler Ollama via `getOllamaUrl('/api/…')`**, jamais une URL `localhost:11434` en dur ; le benchmark Python la reçoit par `OLLAMA_BASE_URL`
 
-Les endpoints qui streament (progression du pull de modèle, lancement de benchmark) utilisent du NDJSON sur POST avec `fetch().body.getReader()` côté client, pas SSE/`EventSource`.
+Le **chat** (page WebUI) : `POST /api/chat` relaie vers `/api/chat` d'Ollama et renvoie son flux NDJSON tel quel ; l'état vit dans `useChat.js` (niveau module, survit à un changement de page) ; chaque conversation est enregistrée en entier après chaque réponse dans `webui/.data/conversations/<id>.json` (non suivi par git). Le Markdown des réponses passe par `app/utils/markdown.js` (`markdown-it` avec `html: false` — le HTML écrit par un modèle n'est jamais interprété, ne pas l'activer : le rendu part dans un `v-html` — et `highlight.js`).
+
+Les endpoints qui streament (progression du pull de modèle, lancement de benchmark, chat) utilisent du NDJSON sur POST avec `fetch().body.getReader()` côté client, pas SSE/`EventSource`. Pour détecter une annulation côté serveur, écouter `event.node.res.on('close')`, **jamais** `req.on('close')` (émis dès la lecture du corps de la requête, avant l'annulation).
 
 ### Particularités de l'API Ollama à connaître
 
@@ -64,7 +66,7 @@ Ollama tourne dans **Docker** (conteneur `ollama`, d'où les chemins `/root/.oll
 
 ### Système de design
 
-Le travail UI doit suivre la charte graphique BeaverCode (palette sombre et chaude, couleurs de marque orange/vert, bordures avec ombre dure 2px style "sticker", typographie à trois rôles — Space Grotesk/Inter/JetBrains Mono). La spec est appliquée par le sous-agent `beavercode-design` — à utiliser pour tout travail sous `webui/app/components/` ou `webui/app/pages/`. Note : `webui/app/assets/css/main.css` ne câble pas encore les tokens de marque dans un bloc `@theme` Tailwind v4, et une grande partie de l'UI existante utilise encore le gris/bleu par défaut de Tailwind au lieu des couleurs de marque — c'est une dérive connue, pas une régression à corriger sans réfléchir.
+Le travail UI doit suivre la charte graphique BeaverCode (palette sombre et chaude, couleurs de marque orange/vert, bordures avec ombre dure 2px style "sticker", typographie à trois rôles — Space Grotesk/Inter/JetBrains Mono). La spec est appliquée par le sous-agent `beavercode-design` — à utiliser pour tout travail sous `webui/app/components/` ou `webui/app/pages/`. Les tokens de marque sont câblés dans le bloc `@theme` de `webui/app/assets/css/main.css`, et l'UI n'utilise plus aucune couleur Tailwind par défaut (passe globale du 19/11). Règles issues de cette passe : le focus clavier passe par **une seule** règle `:focus-visible` globale dans `main.css` (ne pas ajouter de classes `focus-visible:outline-*` par élément) ; `text-bc-text-muted` (~2,9:1, sous le seuil AA) est réservé au décoratif (placeholders, états désactivés, icônes, séparateurs) — tout texte à lire est au moins en `text-bc-text-secondary`.
 
 ### Outil de benchmark (`benchmark_tool/`, Python, suivi par git sauf `results/` et `leaderboard*.json`)
 

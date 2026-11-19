@@ -9,7 +9,7 @@
           {{ modelList.length }} modèle{{ modelList.length > 1 ? 's' : '' }}
         </template>
       </span>
-      <span class="text-xs uppercase tracking-wide text-bc-text-muted">Filtrer par capacité :</span>
+      <span class="text-xs uppercase tracking-wide text-bc-text-secondary">Filtrer par capacité :</span>
       <label
         v-for="cap in capabilityColumns"
         :key="cap"
@@ -34,7 +34,7 @@
       <button
         v-if="isFiltered"
         @click="selectedCapabilities = []; nameQuery = ''"
-        class="text-xs text-bc-text-muted hover:text-bc-text-secondary underline"
+        class="text-xs text-bc-text-secondary hover:text-bc-text-primary underline"
       >
         Réinitialiser
       </button>
@@ -43,41 +43,41 @@
     <div class="max-h-[80vh] overflow-auto rounded-bc border-2 border-bc-border-strong bg-bc-surface shadow-bc-hard">
       <table v-if="modelList" class="w-full text-sm text-bc-text-primary border-collapse">
         <thead class="sticky top-0 bg-bc-surface z-10">
-          <tr class="text-left text-xs uppercase tracking-wide text-bc-text-muted border-b border-bc-border">
+          <tr class="text-left text-xs uppercase tracking-wide text-bc-text-secondary border-b border-bc-border">
             <th class="py-2 pr-4 pl-4 font-medium">
-              <button class="inline-flex items-center gap-1 uppercase tracking-wide hover:text-bc-text-secondary cursor-pointer" @click="toggleSort('name')">
-                Nom <span class="font-mono" :class="sortKey === 'name' ? 'text-bc-orange' : 'text-bc-border-strong'">{{ sortIndicator('name') }}</span>
+              <button class="inline-flex items-center gap-1 uppercase tracking-wide hover:text-bc-text-primary cursor-pointer" @click="toggleSort('name')">
+                Nom <span class="font-mono" :class="sortKey === 'name' ? 'text-bc-orange' : 'text-bc-text-muted'">{{ sortIndicator('name') }}</span>
               </button>
             </th>
             <th class="py-2 px-4 font-medium">
-              <button class="inline-flex items-center gap-1 uppercase tracking-wide hover:text-bc-text-secondary cursor-pointer" @click="toggleSort('size')">
-                Taille <span class="font-mono" :class="sortKey === 'size' ? 'text-bc-orange' : 'text-bc-border-strong'">{{ sortIndicator('size') }}</span>
+              <button class="inline-flex items-center gap-1 uppercase tracking-wide hover:text-bc-text-primary cursor-pointer" @click="toggleSort('size')">
+                Taille <span class="font-mono" :class="sortKey === 'size' ? 'text-bc-orange' : 'text-bc-text-muted'">{{ sortIndicator('size') }}</span>
               </button>
             </th>
             <th class="py-2 px-4 font-medium" title="Mémoire estimée pour charger le modèle (poids + KV cache + surcoût), comparée à la VRAM utilisable">
-              <button class="inline-flex items-center gap-1 uppercase tracking-wide hover:text-bc-text-secondary cursor-pointer" @click="toggleSort('vram')">
-                VRAM <span class="font-mono" :class="sortKey === 'vram' ? 'text-bc-orange' : 'text-bc-border-strong'">{{ sortIndicator('vram') }}</span>
+              <button class="inline-flex items-center gap-1 uppercase tracking-wide hover:text-bc-text-primary cursor-pointer" @click="toggleSort('vram')">
+                VRAM <span class="font-mono" :class="sortKey === 'vram' ? 'text-bc-orange' : 'text-bc-text-muted'">{{ sortIndicator('vram') }}</span>
               </button>
             </th>
             <th class="py-2 px-4 font-medium">
-              <button class="inline-flex items-center gap-1 uppercase tracking-wide hover:text-bc-text-secondary cursor-pointer" @click="toggleSort('params')">
-                Paramètres <span class="font-mono" :class="sortKey === 'params' ? 'text-bc-orange' : 'text-bc-border-strong'">{{ sortIndicator('params') }}</span>
+              <button class="inline-flex items-center gap-1 uppercase tracking-wide hover:text-bc-text-primary cursor-pointer" @click="toggleSort('params')">
+                Paramètres <span class="font-mono" :class="sortKey === 'params' ? 'text-bc-orange' : 'text-bc-text-muted'">{{ sortIndicator('params') }}</span>
               </button>
             </th>
             <th class="py-2 px-4 font-medium">Quantification</th>
             <th class="py-2 px-4 font-medium">
-              <button class="inline-flex items-center gap-1 uppercase tracking-wide hover:text-bc-text-secondary cursor-pointer" @click="toggleSort('context')">
-                Contexte <span class="font-mono" :class="sortKey === 'context' ? 'text-bc-orange' : 'text-bc-border-strong'">{{ sortIndicator('context') }}</span>
+              <button class="inline-flex items-center gap-1 uppercase tracking-wide hover:text-bc-text-primary cursor-pointer" @click="toggleSort('context')">
+                Contexte <span class="font-mono" :class="sortKey === 'context' ? 'text-bc-orange' : 'text-bc-text-muted'">{{ sortIndicator('context') }}</span>
               </button>
             </th>
             <th class="py-2 px-4 font-medium">
-              <button class="inline-flex items-center gap-1 uppercase tracking-wide hover:text-bc-text-secondary cursor-pointer" @click="toggleSort('embedding')">
-                Embedding <span class="font-mono" :class="sortKey === 'embedding' ? 'text-bc-orange' : 'text-bc-border-strong'">{{ sortIndicator('embedding') }}</span>
+              <button class="inline-flex items-center gap-1 uppercase tracking-wide hover:text-bc-text-primary cursor-pointer" @click="toggleSort('embedding')">
+                Embedding <span class="font-mono" :class="sortKey === 'embedding' ? 'text-bc-orange' : 'text-bc-text-muted'">{{ sortIndicator('embedding') }}</span>
               </button>
             </th>
             <th class="py-2 px-4 font-medium">
-              <button class="inline-flex items-center gap-1 uppercase tracking-wide hover:text-bc-text-secondary cursor-pointer" @click="toggleSort('score')">
-                Benchmark <span class="font-mono" :class="sortKey === 'score' ? 'text-bc-orange' : 'text-bc-border-strong'">{{ sortIndicator('score') }}</span>
+              <button class="inline-flex items-center gap-1 uppercase tracking-wide hover:text-bc-text-primary cursor-pointer" @click="toggleSort('score')">
+                Benchmark <span class="font-mono" :class="sortKey === 'score' ? 'text-bc-orange' : 'text-bc-text-muted'">{{ sortIndicator('score') }}</span>
               </button>
             </th>
             <th
@@ -155,7 +155,7 @@
             </td>
           </tr>
           <tr v-if="filteredModelList.length === 0">
-            <td :colspan="9 + capabilityColumns.length" class="py-6 text-center text-bc-text-muted">
+            <td :colspan="9 + capabilityColumns.length" class="py-6 text-center text-bc-text-secondary">
               Aucun modèle ne correspond aux filtres.
             </td>
           </tr>

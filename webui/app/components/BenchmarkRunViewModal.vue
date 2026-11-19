@@ -6,23 +6,23 @@
         v-if="run"
         @click="downloadJson"
         title="Télécharger le JSON"
-        class="p-1.5 rounded text-bc-text-muted hover:text-bc-text-primary hover:bg-bc-surface-alt cursor-pointer"
+        class="p-1.5 rounded-md text-bc-text-secondary hover:text-bc-text-primary hover:bg-bc-surface-alt cursor-pointer"
       >
         <ArrowDownTrayIcon class="w-4 h-4" />
       </button>
     </template>
 
-    <p v-if="loading" class="text-sm text-bc-text-muted">Chargement…</p>
+    <p v-if="loading" class="text-sm text-bc-text-secondary">Chargement…</p>
     <p v-else-if="error" class="text-sm text-bc-danger">{{ error }}</p>
 
-    <p v-if="run && !loading && !error" class="mb-2 text-xs text-bc-text-muted">
+    <p v-if="run && !loading && !error" class="mb-2 text-xs text-bc-text-secondary">
       Réglages : <span class="font-mono text-bc-text-secondary">{{ formatRunOptions(run.options) }}</span>
     </p>
 
     <!-- Relance des tests ratés : chaque modèle relance SES tests ratés, avec les réglages et le juge de ce run
          (résultats comparables à ceux qu'ils remplacent dans le comparatif) -->
     <div v-if="run && !loading && !error" class="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-bc border border-bc-border px-3 py-2 text-xs">
-      <span class="text-bc-text-muted">Relancer :</span>
+      <span class="text-bc-text-secondary">Relancer :</span>
       <label class="flex items-center gap-1.5 text-bc-text-secondary cursor-pointer select-none">
         <input v-model="retryCriterion" type="radio" value="errors" class="accent-bc-orange" />
         les tests en erreur
@@ -54,11 +54,11 @@
           </span>
           <span class="text-sm">
             <span :class="scoreColorClass(model.avg_score)" class="font-medium">{{ model.avg_score }}/5 — {{ model.verdict }}</span>
-            <span class="text-bc-text-muted">(<template v-if="formatLatency(model.tests)"><span title="TTFT : temps avant le premier token, hors chargement (test qui a chargé le modèle écarté, médiane des autres). Chargement : temps de mise en mémoire du modèle, payé au premier test.">{{ formatLatency(model.tests) }}</span> · </template>{{ model.avg_tokens_per_sec }} tok/s)</span>
+            <span class="text-bc-text-secondary">(<template v-if="formatLatency(model.tests)"><span title="TTFT : temps avant le premier token, hors chargement (test qui a chargé le modèle écarté, médiane des autres). Chargement : temps de mise en mémoire du modèle, payé au premier test.">{{ formatLatency(model.tests) }}</span> · </template>{{ model.avg_tokens_per_sec }} tok/s)</span>
           </span>
         </summary>
         <div class="border-t border-bc-border px-3 pb-3">
-          <table class="w-full text-xs text-bc-text-muted border-collapse mt-2 font-mono">
+          <table class="w-full text-xs text-bc-text-secondary border-collapse mt-2 font-mono">
             <tbody>
               <tr
                 v-for="test in model.tests"
@@ -70,10 +70,10 @@
                 <td class="py-1 pr-3 whitespace-nowrap" :class="scoreColorClass(test.score)">
                   {{ '★'.repeat(test.score) }}{{ '☆'.repeat(5 - test.score) }}
                 </td>
-                <td class="py-1 pr-3 text-bc-text-muted whitespace-nowrap">{{ test.tokens_per_sec }} tok/s</td>
-                <td class="py-1 pr-3 text-bc-text-muted whitespace-nowrap" :title="ttftTooltip(test)">TTFT {{ formatSeconds(test.ttft_sec) }}</td>
-                <td class="py-1 pr-3 text-bc-text-muted whitespace-nowrap">{{ formatDuration(test.elapsed_sec) }}</td>
-                <td class="py-1 text-bc-text-muted max-w-md truncate" :title="test.weaknesses">{{ test.weaknesses }}</td>
+                <td class="py-1 pr-3 text-bc-text-secondary whitespace-nowrap">{{ test.tokens_per_sec }} tok/s</td>
+                <td class="py-1 pr-3 text-bc-text-secondary whitespace-nowrap" :title="ttftTooltip(test)">TTFT {{ formatSeconds(test.ttft_sec) }}</td>
+                <td class="py-1 pr-3 text-bc-text-secondary whitespace-nowrap">{{ formatDuration(test.elapsed_sec) }}</td>
+                <td class="py-1 text-bc-text-secondary max-w-md truncate" :title="test.weaknesses">{{ test.weaknesses }}</td>
               </tr>
             </tbody>
           </table>

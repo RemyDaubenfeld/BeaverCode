@@ -4,7 +4,7 @@
 
     <div class="flex items-center gap-2 mb-3 text-sm">
       <span :class="scoreColorClass(avgScore)" class="font-medium">{{ avgScore }}/5 — {{ verdict }}</span>
-      <span class="text-bc-text-muted font-mono">(<template v-if="formatLatency(tests)"><span title="TTFT : temps avant le premier token, hors chargement (test qui a chargé le modèle écarté, médiane des autres). Chargement : temps de mise en mémoire du modèle, payé au premier test.">{{ formatLatency(tests) }}</span> · </template>{{ avgTokensPerSec }} tok/s, {{ tests.length }} test{{ tests.length > 1 ? 's' : '' }})</span>
+      <span class="text-bc-text-secondary font-mono">(<template v-if="formatLatency(tests)"><span title="TTFT : temps avant le premier token, hors chargement (test qui a chargé le modèle écarté, médiane des autres). Chargement : temps de mise en mémoire du modèle, payé au premier test.">{{ formatLatency(tests) }}</span> · </template>{{ avgTokensPerSec }} tok/s, {{ tests.length }} test{{ tests.length > 1 ? 's' : '' }})</span>
     </div>
 
     <div class="max-h-[70vh] overflow-y-auto">
@@ -15,10 +15,10 @@
             <td class="py-1.5 pr-3 whitespace-nowrap font-mono" :class="scoreColorClass(test.score)">
               {{ '★'.repeat(test.score) }}{{ '☆'.repeat(5 - test.score) }}
             </td>
-            <td class="py-1.5 pr-3 text-bc-text-muted font-mono whitespace-nowrap" :title="`Réglages : ${formatRunOptions(test.options)}`">{{ test.tokens_per_sec }} tok/s</td>
-            <td class="py-1.5 pr-3 text-bc-text-muted font-mono whitespace-nowrap" :title="ttftTooltip(test)">TTFT {{ formatSeconds(test.ttft_sec) }}</td>
-            <td class="py-1.5 pr-3 text-bc-text-muted font-mono whitespace-nowrap">{{ formatDuration(test.elapsed_sec) }}</td>
-            <td class="py-1.5 text-bc-text-muted max-w-md truncate" :title="test.weaknesses">{{ test.weaknesses }}</td>
+            <td class="py-1.5 pr-3 text-bc-text-secondary font-mono whitespace-nowrap" :title="`Réglages : ${formatRunOptions(test.options)}`">{{ test.tokens_per_sec }} tok/s</td>
+            <td class="py-1.5 pr-3 text-bc-text-secondary font-mono whitespace-nowrap" :title="ttftTooltip(test)">TTFT {{ formatSeconds(test.ttft_sec) }}</td>
+            <td class="py-1.5 pr-3 text-bc-text-secondary font-mono whitespace-nowrap">{{ formatDuration(test.elapsed_sec) }}</td>
+            <td class="py-1.5 text-bc-text-secondary max-w-md truncate" :title="test.weaknesses">{{ test.weaknesses }}</td>
           </tr>
         </tbody>
       </table>

@@ -4,19 +4,19 @@
       <div class="flex items-center gap-3">
         <h1 class="font-display text-lg font-semibold text-bc-text-primary">Logs Ollama</h1>
         <span
-          class="flex items-center gap-1.5 rounded border px-2.5 py-0.5 font-mono text-xs font-medium"
+          class="flex items-center gap-1.5 rounded-md border px-2.5 py-0.5 font-mono text-xs font-medium"
           :class="statusClasses"
         >
           <span class="size-1.5 rounded-full" :class="statusDotClasses" />
           {{ statusLabel }}
         </span>
-        <span v-if="source" class="text-xs text-bc-text-muted">
+        <span v-if="source" class="text-xs text-bc-text-secondary">
           source : <span class="font-mono font-medium text-bc-text-secondary">{{ sourceLabel }}</span>
         </span>
       </div>
 
       <div class="flex items-center gap-3">
-        <label class="flex items-center gap-1.5 text-xs text-bc-text-muted">
+        <label class="flex items-center gap-1.5 text-xs text-bc-text-secondary">
           <input v-model="autoScroll" type="checkbox" class="rounded border-bc-border bg-bc-surface-alt accent-bc-orange" />
           Défilement auto
         </label>
@@ -24,27 +24,27 @@
           @click="downloadLogs"
           :disabled="!lines.length"
           :title="isFiltered ? `Télécharge les ${visibleLines.length} lignes affichées (filtres appliqués)` : 'Télécharge toutes les lignes reçues'"
-          class="rounded border-2 border-bc-border-strong bg-bc-surface px-3 py-1.5 text-sm text-bc-text-secondary shadow-bc-hard-sm transition-transform duration-75 hover:bg-bc-surface-alt active:translate-x-0.5 active:translate-y-0.5 active:shadow-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+          class="rounded-md border-2 border-bc-border-strong bg-bc-surface px-3 py-1.5 text-sm text-bc-text-secondary shadow-bc-hard-sm transition-transform duration-75 hover:bg-bc-surface-alt active:translate-x-0.5 active:translate-y-0.5 active:shadow-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
         >
           Télécharger
         </button>
         <button
           @click="clearLogs"
-          class="rounded border-2 border-bc-border-strong bg-bc-surface px-3 py-1.5 text-sm text-bc-text-secondary shadow-bc-hard-sm transition-transform duration-75 hover:bg-bc-surface-alt active:translate-x-0.5 active:translate-y-0.5 active:shadow-none cursor-pointer"
+          class="rounded-md border-2 border-bc-border-strong bg-bc-surface px-3 py-1.5 text-sm text-bc-text-secondary shadow-bc-hard-sm transition-transform duration-75 hover:bg-bc-surface-alt active:translate-x-0.5 active:translate-y-0.5 active:shadow-none cursor-pointer"
         >
           Effacer
         </button>
         <button
           v-if="status !== 'closed'"
           @click="stopLogs"
-          class="rounded border-2 border-bc-border-strong bg-bc-surface px-3 py-1.5 text-sm text-bc-text-secondary shadow-bc-hard-sm transition-transform duration-75 hover:bg-bc-surface-alt active:translate-x-0.5 active:translate-y-0.5 active:shadow-none cursor-pointer"
+          class="rounded-md border-2 border-bc-border-strong bg-bc-surface px-3 py-1.5 text-sm text-bc-text-secondary shadow-bc-hard-sm transition-transform duration-75 hover:bg-bc-surface-alt active:translate-x-0.5 active:translate-y-0.5 active:shadow-none cursor-pointer"
         >
           Arrêter
         </button>
         <button
           v-else
           @click="restartLogs"
-          class="rounded border-2 border-bc-border-strong bg-bc-orange px-3 py-1.5 text-sm text-bc-ink shadow-bc-hard-sm transition-transform duration-75 hover:bg-bc-orange-dark active:translate-x-0.5 active:translate-y-0.5 active:shadow-none cursor-pointer"
+          class="rounded-md border-2 border-bc-border-strong bg-bc-orange px-3 py-1.5 text-sm text-bc-ink shadow-bc-hard-sm transition-transform duration-75 hover:bg-bc-orange-dark active:translate-x-0.5 active:translate-y-0.5 active:shadow-none cursor-pointer"
         >
           Redémarrer
         </button>
@@ -54,13 +54,13 @@
     <!-- Filtres : catégorie (d'où vient la ligne), niveau (gravité), recherche texte -->
     <div class="mb-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs">
       <div class="flex items-center gap-1.5">
-        <span class="uppercase tracking-wide text-bc-text-muted">Catégorie :</span>
+        <span class="uppercase tracking-wide text-bc-text-secondary">Catégorie :</span>
         <button
           v-for="c in CATEGORIES"
           :key="c.id"
           @click="toggle(shownCategories, c.id)"
           :title="c.hint"
-          class="rounded border px-2 py-0.5 font-mono"
+          class="rounded-md border px-2 py-0.5 font-mono"
           :class="shownCategories.has(c.id) ? 'border-bc-orange text-bc-orange-light bg-bc-orange-tint' : 'border-bc-border text-bc-text-muted line-through'"
         >
           {{ c.label }} <span class="opacity-70">{{ counts.category[c.id] }}</span>
@@ -68,12 +68,12 @@
       </div>
 
       <div class="flex items-center gap-1.5">
-        <span class="uppercase tracking-wide text-bc-text-muted">Niveau :</span>
+        <span class="uppercase tracking-wide text-bc-text-secondary">Niveau :</span>
         <button
           v-for="l in LEVELS"
           :key="l.id"
           @click="toggle(shownLevels, l.id)"
-          class="rounded border px-2 py-0.5 font-mono"
+          class="rounded-md border px-2 py-0.5 font-mono"
           :class="shownLevels.has(l.id) ? l.activeClass : 'border-bc-border text-bc-text-muted line-through'"
         >
           {{ l.label }} <span class="opacity-70">{{ counts.level[l.id] }}</span>
@@ -89,10 +89,10 @@
         class="w-64 px-2 py-1 rounded-bc bg-bc-surface-alt border border-bc-border font-mono text-bc-text-primary placeholder-bc-text-muted focus:outline-none focus:border-bc-orange"
       />
 
-      <span class="font-mono text-bc-text-muted">
+      <span class="font-mono text-bc-text-secondary">
         {{ visibleLines.length }}<template v-if="isFiltered"> / {{ lines.length }}</template> ligne{{ visibleLines.length > 1 ? 's' : '' }}
       </span>
-      <button v-if="isFiltered" @click="resetFilters" class="text-bc-text-muted hover:text-bc-text-secondary underline">
+      <button v-if="isFiltered" @click="resetFilters" class="text-bc-text-secondary hover:text-bc-text-primary underline">
         Réinitialiser
       </button>
     </div>
@@ -106,8 +106,8 @@
       class="flex-1 overflow-y-auto rounded border border-bc-border bg-bc-ink p-3 font-mono text-xs"
       @scroll="onScroll"
     >
-      <p v-if="lines.length === 0 && !errorMessage" class="text-bc-text-muted">En attente de logs…</p>
-      <p v-else-if="visibleLines.length === 0" class="text-bc-text-muted">Aucune ligne ne correspond aux filtres.</p>
+      <p v-if="lines.length === 0 && !errorMessage" class="text-bc-text-secondary">En attente de logs…</p>
+      <p v-else-if="visibleLines.length === 0" class="text-bc-text-secondary">Aucune ligne ne correspond aux filtres.</p>
       <div
         v-for="line in visibleLines"
         :key="line.id"
@@ -224,7 +224,8 @@ function lineClass(line) {
   if (line.level === 'error') return 'text-bc-danger'
   if (line.level === 'warn') return 'text-bc-warning'
   if (line.category === 'ollama') return 'text-bc-green'
-  return line.category === 'http' ? 'text-bc-text-muted' : 'text-bc-text-secondary'
+  // http atténué (polling de la WebUI, rarement utile) mais au-dessus du seuil AA : ≈ 4,9:1 sur bc-ink, contre 3,3:1 en muted
+  return line.category === 'http' ? 'text-bc-text-secondary/80' : 'text-bc-text-secondary'
 }
 
 // découpe une ligne en morceaux surlignés / non surlignés selon la recherche

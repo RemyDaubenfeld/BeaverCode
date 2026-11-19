@@ -13,7 +13,7 @@
         {{ loadedModels.length }} modèle{{ loadedModels.length > 1 ? 's' : '' }} chargé{{ loadedModels.length > 1 ? 's' : '' }}
         <span
           v-if="nextUnload"
-          class="text-bc-text-muted"
+          class="text-bc-text-secondary"
           :title="`${nextUnload.name} se décharge dans ${nextUnload.text}`"
         >
           · {{ nextUnload.text }}
@@ -80,7 +80,7 @@
           />
           <span
             v-if="gpu.thermalThrottle"
-            class="text-[10px] px-1 rounded border border-bc-danger text-bc-danger"
+            class="text-[10px] px-1 rounded-md border border-bc-danger text-bc-danger"
             title="Le GPU baisse ses fréquences parce qu'il est trop chaud : les tok/s chutent"
           >
             bridé (chaleur)
@@ -105,7 +105,7 @@
           />
           <span
             v-if="gpu.powerCapped && !gpu.thermalThrottle"
-            class="text-[10px] px-1 rounded border border-bc-border text-bc-text-muted"
+            class="text-[10px] px-1 rounded-md border border-bc-border text-bc-text-secondary"
             title="Le GPU tourne à sa limite de puissance : normal sous forte charge, il ne peut pas aller plus vite"
           >
             limite W

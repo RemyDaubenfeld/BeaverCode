@@ -4,7 +4,7 @@
       <span class="font-mono normal-case text-bc-text-primary">{{ name }}</span>
     </template>
 
-    <p v-if="pending" class="text-sm text-bc-text-muted">Chargement…</p>
+    <p v-if="pending" class="text-sm text-bc-text-secondary">Chargement…</p>
     <p v-else-if="error" class="text-sm text-bc-danger">Impossible de lire les informations du modèle.</p>
 
     <template v-else-if="info">
@@ -17,7 +17,7 @@
           class="px-3 py-1.5 text-xs font-mono -mb-0.5 cursor-pointer rounded-t-bc border-2 border-b-0"
           :class="tab === t.id
             ? 'border-bc-border-strong bg-bc-bg text-bc-orange-light relative top-0.5'
-            : 'border-transparent text-bc-text-muted hover:text-bc-text-secondary'"
+            : 'border-transparent text-bc-text-secondary hover:text-bc-text-primary'"
         >
           {{ t.label }}
         </button>
@@ -27,15 +27,15 @@
       <div v-if="tab === 'overview'" class="space-y-4">
         <dl class="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1.5 text-sm">
           <template v-for="row in overviewRows" :key="row.label">
-            <dt class="text-bc-text-muted">{{ row.label }}</dt>
+            <dt class="text-bc-text-secondary">{{ row.label }}</dt>
             <dd class="font-mono text-bc-text-primary">{{ row.value }}</dd>
           </template>
-          <dt class="text-bc-text-muted">Capacités</dt>
+          <dt class="text-bc-text-secondary">Capacités</dt>
           <dd class="flex flex-wrap gap-1">
             <span
               v-for="cap in info.capabilities"
               :key="cap"
-              class="font-mono text-[11px] px-1.5 py-0.5 rounded border border-bc-border text-bc-text-secondary"
+              class="font-mono text-[11px] px-1.5 py-0.5 rounded-md border border-bc-border text-bc-text-secondary"
             >
               {{ cap }}
             </span>
@@ -43,10 +43,10 @@
         </dl>
 
         <div>
-          <h3 class="text-xs uppercase tracking-wide text-bc-text-muted mb-2">Architecture</h3>
+          <h3 class="text-xs uppercase tracking-wide text-bc-text-secondary mb-2">Architecture</h3>
           <dl class="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1.5 text-sm">
             <template v-for="row in architectureRows" :key="row.label">
-              <dt class="text-bc-text-muted" :title="row.hint">{{ row.label }}</dt>
+              <dt class="text-bc-text-secondary" :title="row.hint">{{ row.label }}</dt>
               <dd class="font-mono text-bc-text-primary">{{ row.value }}</dd>
             </template>
           </dl>
@@ -69,7 +69,7 @@
         <div class="overflow-x-auto rounded-bc border border-bc-border">
           <table class="w-full text-sm border-collapse">
             <thead>
-              <tr class="text-left text-xs uppercase tracking-wide text-bc-text-muted border-b border-bc-border">
+              <tr class="text-left text-xs uppercase tracking-wide text-bc-text-secondary border-b border-bc-border">
                 <th class="py-1.5 px-3 font-medium">num_ctx</th>
                 <th class="py-1.5 px-3 font-medium">KV cache</th>
                 <th class="py-1.5 px-3 font-medium">Total</th>
@@ -117,7 +117,7 @@
       />
       <div v-else-if="tab === 'parameters'" class="space-y-3">
         <div class="flex items-center justify-between gap-3">
-          <p class="text-xs text-bc-text-muted">
+          <p class="text-xs text-bc-text-secondary">
             {{ info.parameters.length ? 'Valeurs définies dans le modelfile.' : 'Aucun paramètre : valeurs par défaut d\'Ollama.' }}
             <span v-if="savedMessage" class="text-bc-green">{{ savedMessage }}</span>
           </p>
@@ -130,12 +130,12 @@
         </div>
         <dl class="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1.5 text-sm">
           <template v-for="(p, i) in info.parameters" :key="i">
-            <dt class="font-mono text-bc-text-muted">{{ p.key }}</dt>
+            <dt class="font-mono text-bc-text-secondary">{{ p.key }}</dt>
             <dd class="font-mono text-bc-text-primary break-all">{{ p.value }}</dd>
           </template>
         </dl>
         <div v-if="info.system">
-          <h3 class="text-xs uppercase tracking-wide text-bc-text-muted mb-2">Prompt système</h3>
+          <h3 class="text-xs uppercase tracking-wide text-bc-text-secondary mb-2">Prompt système</h3>
           <pre :class="preClass" class="whitespace-pre-wrap">{{ info.system }}</pre>
         </div>
       </div>
@@ -206,7 +206,7 @@ const tabs = computed(() => [
 ].filter((t) => t.show))
 
 const preClass = 'font-mono text-xs text-bc-text-secondary bg-bc-bg border border-bc-border rounded-bc p-3 overflow-auto max-h-[55vh] whitespace-pre'
-const tagClass = 'font-mono text-[10px] px-1 rounded border border-bc-border text-bc-text-muted'
+const tagClass = 'font-mono text-[10px] px-1 rounded-md border border-bc-border text-bc-text-secondary'
 
 const overviewRows = computed(() => {
   const i = info.value

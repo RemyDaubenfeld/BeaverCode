@@ -36,7 +36,7 @@
       </button>
     </div>
 
-    <p v-if="modelOrder.length === 0" class="text-sm text-bc-text-muted">En attente des premiers résultats…</p>
+    <p v-if="modelOrder.length === 0" class="text-sm text-bc-text-secondary">En attente des premiers résultats…</p>
 
     <div v-else class="max-h-[65vh] overflow-y-auto space-y-2 pr-1">
       <details
@@ -58,11 +58,11 @@
             <span :class="scoreColorClass(results[model].avgScore)" class="font-mono font-medium">
               {{ results[model].avgScore }}/5 — {{ results[model].verdict }}
             </span>
-            <span class="text-bc-text-muted font-mono">
+            <span class="text-bc-text-secondary font-mono">
               (<template v-if="formatLatency(results[model].tests)"><span title="TTFT : temps avant le premier token, hors chargement (test qui a chargé le modèle écarté, médiane des autres). Chargement : temps de mise en mémoire du modèle, payé au premier test.">{{ formatLatency(results[model].tests) }}</span> · </template>{{ results[model].avgTokensPerSec }} tok/s, {{ formatDuration(modelElapsedSec(model)) }}<template v-if="results[model].skipped?.length">, {{ results[model].skipped.length }} ignoré{{ results[model].skipped.length > 1 ? 's' : '' }} : capacité absente</template>)
             </span>
           </span>
-          <span v-else class="text-xs text-bc-text-muted">en attente…</span>
+          <span v-else class="text-xs text-bc-text-secondary">en attente…</span>
         </summary>
         <div class="border-t border-bc-border px-3 pb-3">
           <div v-if="results[model].status === 'running'" class="h-1.5 w-full rounded-full bg-bc-surface-alt border border-bc-border overflow-hidden my-2">
@@ -78,10 +78,10 @@
                 <td class="py-1 pr-3 whitespace-nowrap font-mono" :class="scoreColorClass(test.score)">
                   {{ '★'.repeat(test.score) }}{{ '☆'.repeat(5 - test.score) }}
                 </td>
-                <td class="py-1 pr-3 text-bc-text-muted font-mono whitespace-nowrap">{{ test.tokens_per_sec }} tok/s</td>
-                <td class="py-1 pr-3 text-bc-text-muted font-mono whitespace-nowrap" :title="ttftTooltip(test)">TTFT {{ formatSeconds(test.ttft_sec) }}</td>
-                <td class="py-1 pr-3 text-bc-text-muted font-mono whitespace-nowrap">{{ formatDuration(test.elapsed_sec) }}</td>
-                <td class="py-1 text-bc-text-muted max-w-md truncate" :title="test.weaknesses">{{ test.weaknesses }}</td>
+                <td class="py-1 pr-3 text-bc-text-secondary font-mono whitespace-nowrap">{{ test.tokens_per_sec }} tok/s</td>
+                <td class="py-1 pr-3 text-bc-text-secondary font-mono whitespace-nowrap" :title="ttftTooltip(test)">TTFT {{ formatSeconds(test.ttft_sec) }}</td>
+                <td class="py-1 pr-3 text-bc-text-secondary font-mono whitespace-nowrap">{{ formatDuration(test.elapsed_sec) }}</td>
+                <td class="py-1 text-bc-text-secondary max-w-md truncate" :title="test.weaknesses">{{ test.weaknesses }}</td>
               </tr>
             </tbody>
           </table>

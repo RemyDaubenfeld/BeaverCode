@@ -1,4 +1,7 @@
 @import "tailwindcss";
+/* rendu Markdown du chat : importé ici (et non dans nuxt.config) pour que Tailwind voie ses var(--color-bc-…)
+   et garde ces variables, qu'il retire sinon si aucune classe ne les utilise */
+@import "./markdown.css";
 
 @theme {
   /* Brand */
@@ -55,4 +58,23 @@ body {
 h1, h2, h3, h4 {
   font-family: var(--font-display);
   letter-spacing: -0.01em;
+}
+
+/* focus clavier : un seul anneau de marque pour toute l'application, à la place de l'anneau bleu du
+   navigateur. Dans @layer base pour qu'une classe utilitaire (ex. focus:outline-none sur un champ texte
+   qui a déjà sa bordure orange au focus) puisse encore le remplacer ; :where() garde la spécificité au minimum */
+@layer base {
+  :where(
+    button,
+    a,
+    summary,
+    [role="button"],
+    select,
+    input[type="checkbox"],
+    input[type="radio"],
+    [tabindex]:not([tabindex="-1"])
+  ):focus-visible {
+    outline: 2px solid var(--color-bc-orange-light);
+    outline-offset: 2px;
+  }
 }

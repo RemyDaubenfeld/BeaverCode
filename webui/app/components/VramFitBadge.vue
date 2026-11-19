@@ -6,7 +6,7 @@
     <span v-if="showSize" class="font-mono text-bc-text-secondary">{{ formatGo(estimate.total_bytes) }}</span>
     <span
       v-if="isMoe"
-      class="font-mono text-[10px] px-1 rounded border border-bc-border text-bc-text-muted whitespace-nowrap"
+      class="font-mono text-[10px] px-1 rounded-md border border-bc-border text-bc-text-secondary whitespace-nowrap"
     >
       MoE {{ formatParams(estimate.active_params) }}
     </span>

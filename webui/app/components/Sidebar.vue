@@ -21,7 +21,7 @@
     </div>
     <!-- bas : panneau « Système » (matériel, Ollama, stockage), séparé de la navigation -->
     <div class="flex flex-col gap-1 border-t-2 border-bc-border-strong bg-bc-bg/40 p-4">
-      <h2 class="mb-1 text-[10px] font-mono uppercase tracking-wide text-bc-text-muted">Système</h2>
+      <h2 class="mb-1 text-[10px] font-mono uppercase tracking-wide text-bc-text-secondary">Système</h2>
 
       <div class="flex items-center gap-2 py-2 text-bc-text-primary">
         <img class="size-12 shrink-0" src="assets/img/cpu_color.webp" alt="CPU">
@@ -60,7 +60,7 @@
           :class="status == null ? 'bg-bc-text-muted' : status.online ? 'bg-bc-green' : 'bg-bc-danger'"
           aria-hidden="true"
         />
-        <span v-if="status == null" class="text-bc-text-muted">Ollama…</span>
+        <span v-if="status == null" class="text-bc-text-secondary">Ollama…</span>
         <span v-else-if="status.online" class="font-mono text-bc-text-primary">Ollama {{ status.version }}</span>
         <span v-else class="font-mono text-bc-danger" :title="`Ollama ne répond pas sur ${status.url ?? 'l\'URL configurée'} (Paramétrage → WebUI)`">Ollama hors ligne</span>
       </div>
@@ -80,7 +80,7 @@
           <div class="h-full rounded-full bg-bc-orange" :style="{ width: percent(ollamaBytes) }" />
           <div class="h-full rounded-full bg-bc-border" :style="{ width: percent(otherUsedBytes) }" />
         </div>
-        <p v-if="storage.disk_free_bytes != null" class="mt-1 text-[10px] text-bc-text-muted">
+        <p v-if="storage.disk_free_bytes != null" class="mt-1 text-[10px] text-bc-text-secondary">
           {{ formatBytes(storage.disk_free_bytes) }} libres sur {{ formatBytes(storage.disk_total_bytes) }}
         </p>
       </div>

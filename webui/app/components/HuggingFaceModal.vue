@@ -7,7 +7,7 @@
       @input="onInput"
       type="text"
       placeholder="Rechercher un modèle GGUF (ex: qwen3 coder) ou coller un dépôt (hf.co/user/repo)…"
-      class="w-full mb-3 px-3 py-2 rounded bg-bc-surface-alt border border-bc-border text-sm text-bc-text-primary placeholder-bc-text-muted focus:outline-none focus:border-bc-orange"
+      class="w-full mb-3 px-3 py-2 rounded-bc bg-bc-surface-alt border border-bc-border text-sm text-bc-text-primary placeholder-bc-text-muted focus:outline-none focus:border-bc-orange"
     />
 
     <!-- dépôt choisi (clic sur un résultat ou dépôt collé) : ses quantifications -->
@@ -24,9 +24,9 @@
 
     <!-- résultats de recherche -->
     <template v-else>
-      <p v-if="loading" class="text-sm text-bc-text-muted">Recherche…</p>
+      <p v-if="loading" class="text-sm text-bc-text-secondary">Recherche…</p>
       <p v-else-if="error" class="text-sm text-bc-danger">{{ error }}</p>
-      <p v-else-if="!results.length" class="text-sm text-bc-text-muted">Aucun dépôt GGUF trouvé.</p>
+      <p v-else-if="!results.length" class="text-sm text-bc-text-secondary">Aucun dépôt GGUF trouvé.</p>
       <ul v-else class="space-y-1">
         <li v-for="r in results" :key="r.repo">
           <button
@@ -36,14 +36,14 @@
             <span class="flex-1 min-w-0 font-mono text-xs text-bc-text-primary truncate" :title="r.repo">{{ r.repo }}</span>
             <span
               v-if="r.pipeline_tag === 'image-text-to-text'"
-              class="shrink-0 font-mono text-[10px] px-1 rounded border border-bc-border text-bc-text-muted"
+              class="shrink-0 font-mono text-[10px] px-1 rounded-md border border-bc-border text-bc-text-secondary"
             >
               vision
             </span>
             <span class="shrink-0 w-24 text-right font-mono text-xs text-bc-text-secondary" title="Téléchargements (30 derniers jours)">
               {{ formatCount(r.downloads) }} ↓
             </span>
-            <span class="shrink-0 w-14 text-right font-mono text-xs text-bc-text-muted" title="Likes">
+            <span class="shrink-0 w-14 text-right font-mono text-xs text-bc-text-secondary" title="Likes">
               {{ formatCount(r.likes) }} ♥
             </span>
           </button>
@@ -55,14 +55,14 @@
     <div class="mt-4 border-t border-bc-border pt-3">
       <button
         @click="showImport = !showImport"
-        class="text-xs uppercase tracking-wide text-bc-text-muted hover:text-bc-text-secondary"
+        class="text-xs uppercase tracking-wide text-bc-text-secondary hover:text-bc-text-primary"
       >
         {{ showImport ? '▾' : '▸' }} Importer un fichier GGUF local
       </button>
       <GgufImport v-if="showImport" class="mt-3" @imported="(name) => emit('pull-success', name)" />
     </div>
 
-    <p v-if="Object.keys(pulls).length" class="text-xs text-bc-text-muted mt-3">
+    <p v-if="Object.keys(pulls).length" class="text-xs text-bc-text-secondary mt-3">
       Vous pouvez fermer cette fenêtre : la progression reste visible sur la page Modèles.
     </p>
   </Modal>

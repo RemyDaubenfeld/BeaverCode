@@ -8,24 +8,24 @@
         @input="onInput"
         type="text"
         placeholder="Rechercher un modèle (ex: llama3, qwen2.5-coder)…"
-        class="flex-1 px-3 py-2 rounded bg-bc-surface-alt border border-bc-border text-sm text-bc-text-primary placeholder-bc-text-muted focus:outline-none focus:border-bc-orange"
+        class="flex-1 px-3 py-2 rounded-bc bg-bc-surface-alt border border-bc-border text-sm text-bc-text-primary placeholder-bc-text-muted focus:outline-none focus:border-bc-orange"
       />
       <button
         @click="scrapeLibrary"
         :disabled="scraping"
         title="Vérifier les nouveaux modèles sur ollama.com/library"
-        class="shrink-0 px-3 py-2 text-xs rounded border-2 border-bc-border-strong bg-bc-surface text-bc-text-secondary shadow-bc-hard-sm transition-transform duration-75 hover:bg-bc-surface-alt active:translate-x-0.5 active:translate-y-0.5 active:shadow-none disabled:border-bc-border disabled:bg-bc-surface-alt disabled:text-bc-text-muted disabled:shadow-none disabled:opacity-100 disabled:cursor-not-allowed"
+        class="shrink-0 px-3 py-2 text-xs rounded-md border-2 border-bc-border-strong bg-bc-surface text-bc-text-secondary shadow-bc-hard-sm transition-transform duration-75 hover:bg-bc-surface-alt active:translate-x-0.5 active:translate-y-0.5 active:shadow-none disabled:border-bc-border disabled:bg-bc-surface-alt disabled:text-bc-text-muted disabled:shadow-none disabled:opacity-100 disabled:cursor-not-allowed"
       >
         {{ scraping ? '…' : 'Actualiser la liste' }}
       </button>
     </div>
-    <p v-if="scrapeMessage" class="text-xs mb-2" :class="scrapeError ? 'text-bc-danger' : 'text-bc-text-muted'">
+    <p v-if="scrapeMessage" class="text-xs mb-2" :class="scrapeError ? 'text-bc-danger' : 'text-bc-text-secondary'">
       {{ scrapeMessage }}
     </p>
 
-    <p v-if="loading" class="text-sm text-bc-text-muted">Recherche…</p>
+    <p v-if="loading" class="text-sm text-bc-text-secondary">Recherche…</p>
     <p v-else-if="error" class="text-sm text-bc-danger">Erreur de recherche. Réessayez.</p>
-    <p v-else-if="results.length === 0" class="text-sm text-bc-text-muted">Aucun résultat.</p>
+    <p v-else-if="results.length === 0" class="text-sm text-bc-text-secondary">Aucun résultat.</p>
 
     <ul v-else class="space-y-2">
       <li
@@ -43,7 +43,7 @@
               :details="libraryEstimateDetails(m)"
             />
           </div>
-          <p class="text-xs text-bc-text-muted truncate">{{ m.description }}</p>
+          <p class="text-xs text-bc-text-secondary truncate">{{ m.description }}</p>
           <div v-if="m.labels?.length" class="flex flex-wrap gap-1 mt-1">
             <button
               v-for="label in m.labels"
@@ -51,7 +51,7 @@
               type="button"
               @click="selectedSize[m.model_identifier] = label"
               :disabled="isPulling(m)"
-              class="font-mono text-[10px] px-1.5 py-0.5 rounded border disabled:cursor-not-allowed"
+              class="font-mono text-[10px] px-1.5 py-0.5 rounded-md border disabled:cursor-not-allowed"
               :class="selectedSize[m.model_identifier] === label
                 ? 'bg-bc-orange border-bc-orange-dark text-bc-ink'
                 : 'bg-bc-surface-alt border-transparent text-bc-text-secondary hover:bg-bc-surface'"
@@ -66,14 +66,14 @@
             v-if="isPulling(m)"
             @click="cancelPull(tagFor(m))"
             title="Annuler le téléchargement"
-            class="px-2 py-1 text-xs rounded border-2 border-bc-border-strong bg-bc-surface text-bc-danger shadow-bc-hard-sm transition-transform duration-75 hover:bg-bc-surface-alt active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
+            class="px-2 py-1 text-xs rounded-md border-2 border-bc-border-strong bg-bc-surface text-bc-danger shadow-bc-hard-sm transition-transform duration-75 hover:bg-bc-surface-alt active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
           >
             Annuler
           </button>
           <button
             @click="pull(m)"
             :disabled="isPulling(m)"
-            class="px-3 py-1 text-xs rounded border-2 border-bc-border-strong bg-bc-orange text-bc-ink shadow-bc-hard-sm transition-transform duration-75 hover:bg-bc-orange-dark active:translate-x-0.5 active:translate-y-0.5 active:shadow-none disabled:border-bc-border disabled:bg-bc-surface-alt disabled:text-bc-text-muted disabled:shadow-none disabled:opacity-100 disabled:cursor-not-allowed"
+            class="px-3 py-1 text-xs rounded-md border-2 border-bc-border-strong bg-bc-orange text-bc-ink shadow-bc-hard-sm transition-transform duration-75 hover:bg-bc-orange-dark active:translate-x-0.5 active:translate-y-0.5 active:shadow-none disabled:border-bc-border disabled:bg-bc-surface-alt disabled:text-bc-text-muted disabled:shadow-none disabled:opacity-100 disabled:cursor-not-allowed"
           >
             <span v-if="isPulling(m) && pulls[tagFor(m)].queued">En attente</span>
             <span v-else-if="isPulling(m)" class="font-mono">{{ pulls[tagFor(m)].progress }}%</span>
@@ -84,7 +84,7 @@
     </ul>
 
     <p v-if="pullError" class="text-sm text-bc-danger mt-3">{{ pullError }}</p>
-    <p v-if="Object.keys(pulls).length" class="text-xs text-bc-text-muted mt-3">
+    <p v-if="Object.keys(pulls).length" class="text-xs text-bc-text-secondary mt-3">
       Vous pouvez fermer cette fenêtre : la progression reste visible sur la page Modèles.
     </p>
   </Modal>

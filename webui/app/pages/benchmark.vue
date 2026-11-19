@@ -4,14 +4,14 @@
       <button
         @click="tab = 'tests'"
         class="px-4 py-2.5 text-sm font-mono -mb-0.5 cursor-pointer rounded-t-bc border-2 border-b-0"
-        :class="tab === 'tests' ? 'border-bc-border-strong bg-bc-bg text-bc-orange-light relative top-0.5' : 'border-transparent text-bc-text-muted hover:text-bc-text-secondary'"
+        :class="tab === 'tests' ? 'border-bc-border-strong bg-bc-bg text-bc-orange-light relative top-0.5' : 'border-transparent text-bc-text-secondary hover:text-bc-text-primary'"
       >
         Tests
       </button>
       <button
         @click="tab = 'resultats'"
         class="px-4 py-2.5 text-sm font-mono -mb-0.5 cursor-pointer rounded-t-bc border-2 border-b-0"
-        :class="tab === 'resultats' ? 'border-bc-border-strong bg-bc-bg text-bc-orange-light relative top-0.5' : 'border-transparent text-bc-text-muted hover:text-bc-text-secondary'"
+        :class="tab === 'resultats' ? 'border-bc-border-strong bg-bc-bg text-bc-orange-light relative top-0.5' : 'border-transparent text-bc-text-secondary hover:text-bc-text-primary'"
       >
         Résultats
       </button>

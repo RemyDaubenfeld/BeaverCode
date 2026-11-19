@@ -4,9 +4,9 @@
 
     <!-- WebUI : réglages modifiables, enregistrés dans webui/.data/settings.json -->
     <section class="mb-8">
-      <h2 class="font-display text-sm font-semibold uppercase tracking-wide text-bc-text-muted mb-3">WebUI</h2>
+      <h2 class="font-display text-sm font-semibold uppercase tracking-wide text-bc-text-secondary mb-3">WebUI</h2>
 
-      <p v-if="!form" class="text-sm text-bc-text-muted">Chargement des réglages…</p>
+      <p v-if="!form" class="text-sm text-bc-text-secondary">Chargement des réglages…</p>
       <!-- novalidate : la validation native des champs numériques n'accepte que min + n × step (avec min=512 et
            step=1024, 8192 était refusé) ; c'est le serveur qui valide (PUT /api/settings), avec un message clair -->
       <form v-else class="space-y-5" novalidate @submit.prevent="save">
@@ -33,7 +33,7 @@
               {{ testResult.ok ? `✓ Ollama ${testResult.version}` : testResult.message }}
             </span>
           </div>
-          <p class="mt-1 text-xs text-bc-text-muted">
+          <p class="mt-1 text-xs text-bc-text-secondary">
             Vide = {{ defaults.ollama_url }}. Utilisée par toute la WebUI (modèles, monitoring, logs) et par le benchmark.
           </p>
         </div>
@@ -49,7 +49,7 @@
             <option value="">Par défaut ({{ defaults.default_judge ?? 'lib/config.py' }})</option>
             <option v-for="m in modelList ?? []" :key="m.name" :value="m.name">{{ m.name }}</option>
           </select>
-          <p class="mt-1 text-xs text-bc-text-muted">
+          <p class="mt-1 text-xs text-bc-text-secondary">
             Présélectionné au lancement d'un benchmark. Un juge texte seul : un modèle multimodal plante quand le juge est forcé sur CPU.
           </p>
         </div>
@@ -60,12 +60,12 @@
             <input v-model="customOptions" type="checkbox" class="accent-bc-orange" />
             Réglages de génération par défaut du benchmark personnalisés
           </label>
-          <p v-if="!customOptions" class="text-xs text-bc-text-muted">
+          <p v-if="!customOptions" class="text-xs text-bc-text-secondary">
             Valeurs de lib/config.py : <span class="font-mono">{{ formatRunOptions(defaults.benchmark_options) }}</span>.
           </p>
           <div v-else class="flex flex-wrap items-end gap-x-8 gap-y-3 mt-2">
             <div>
-              <label class="block text-xs text-bc-text-muted mb-1" for="set-temperature">Température</label>
+              <label class="block text-xs text-bc-text-secondary mb-1" for="set-temperature">Température</label>
               <div class="flex items-center gap-2">
                 <input id="set-temperature" v-model.number="form.benchmark_options.temperature" type="number" min="0" max="2" step="0.1"
                   :disabled="modelValue.temperature"
@@ -76,7 +76,7 @@
               </div>
             </div>
             <div>
-              <label class="block text-xs text-bc-text-muted mb-1" for="set-num-ctx">Contexte (num_ctx)</label>
+              <label class="block text-xs text-bc-text-secondary mb-1" for="set-num-ctx">Contexte (num_ctx)</label>
               <div class="flex items-center gap-2">
                 <input id="set-num-ctx" v-model.number="form.benchmark_options.num_ctx" type="number" min="1024" max="262144" step="1024"
                   :disabled="modelValue.num_ctx"
@@ -87,12 +87,12 @@
               </div>
             </div>
             <div>
-              <label class="block text-xs text-bc-text-muted mb-1" for="set-num-predict">Tokens max par réponse</label>
+              <label class="block text-xs text-bc-text-secondary mb-1" for="set-num-predict">Tokens max par réponse</label>
               <input id="set-num-predict" v-model.number="form.benchmark_options.num_predict" type="number" min="128" max="32768" step="128"
                 class="w-24 px-2 py-1 text-sm rounded-bc bg-bc-surface-alt border border-bc-border font-mono text-bc-text-primary" />
             </div>
           </div>
-          <p v-if="customOptions" class="mt-1 text-xs text-bc-text-muted">
+          <p v-if="customOptions" class="mt-1 text-xs text-bc-text-secondary">
             Préremplissent la section « Réglages de génération » du benchmark. Astuce : 4096 tokens max évite de couper les modèles à raisonnement pendant leur réflexion.
           </p>
         </div>
@@ -113,35 +113,35 @@
     <!-- Ollama : configuration du serveur, en lecture seule -->
     <section class="mb-8">
       <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-2">
-        <h2 class="font-display text-sm font-semibold uppercase tracking-wide text-bc-text-muted">Ollama</h2>
-        <span v-if="config" class="text-xs text-bc-text-muted">
+        <h2 class="font-display text-sm font-semibold uppercase tracking-wide text-bc-text-secondary">Ollama</h2>
+        <span v-if="config" class="text-xs text-bc-text-secondary">
           lecture seule — {{ sourceLabel }}
         </span>
       </div>
 
-      <p v-if="pending" class="text-sm text-bc-text-muted">Lecture de la configuration…</p>
+      <p v-if="pending" class="text-sm text-bc-text-secondary">Lecture de la configuration…</p>
       <p v-else-if="error" class="text-sm text-bc-danger">Impossible de lire la configuration d'Ollama.</p>
 
       <template v-else-if="config">
         <!-- ce que la configuration change pour la WebUI -->
         <div class="mb-3 grid gap-2 sm:grid-cols-3 text-xs">
           <div class="rounded-bc border border-bc-border bg-bc-surface-alt px-3 py-2">
-            <div class="text-bc-text-muted">KV cache</div>
+            <div class="text-bc-text-secondary">KV cache</div>
             <div class="font-mono text-sm text-bc-text-primary">{{ config.kv_cache_type }}</div>
-            <div class="text-bc-text-muted">{{ kvSummary }}</div>
+            <div class="text-bc-text-secondary">{{ kvSummary }}</div>
           </div>
           <div class="rounded-bc border border-bc-border bg-bc-surface-alt px-3 py-2">
-            <div class="text-bc-text-muted">Contexte par défaut</div>
+            <div class="text-bc-text-secondary">Contexte par défaut</div>
             <div class="font-mono text-sm text-bc-text-primary">{{ config.default_num_ctx }} tokens</div>
-            <div class="text-bc-text-muted">pour les modèles sans num_ctx dans leur modelfile</div>
+            <div class="text-bc-text-secondary">pour les modèles sans num_ctx dans leur modelfile</div>
           </div>
           <div class="rounded-bc border border-bc-border bg-bc-surface-alt px-3 py-2">
-            <div class="text-bc-text-muted">Déchargement auto</div>
+            <div class="text-bc-text-secondary">Déchargement auto</div>
             <div class="font-mono text-sm text-bc-text-primary">{{ value('OLLAMA_KEEP_ALIVE') ?? '5m' }}</div>
-            <div class="text-bc-text-muted">après la dernière utilisation d'un modèle</div>
+            <div class="text-bc-text-secondary">après la dernière utilisation d'un modèle</div>
           </div>
         </div>
-        <p class="mb-3 text-xs text-bc-text-muted">
+        <p class="mb-3 text-xs text-bc-text-secondary">
           Le format du KV cache et le contexte par défaut sont pris en compte dans l'estimation mémoire des modèles (colonne VRAM, fiche d'un modèle → Contexte).
         </p>
 
@@ -159,7 +159,7 @@
         <div class="overflow-x-auto rounded-bc border border-bc-border">
           <table class="w-full text-sm border-collapse">
             <thead>
-              <tr class="text-left text-xs uppercase tracking-wide text-bc-text-muted border-b border-bc-border">
+              <tr class="text-left text-xs uppercase tracking-wide text-bc-text-secondary border-b border-bc-border">
                 <th class="py-1.5 px-3 font-medium">Variable</th>
                 <th class="py-1.5 px-3 font-medium">Valeur</th>
                 <th class="py-1.5 px-3 font-medium">Rôle</th>
@@ -170,7 +170,7 @@
                 <td class="py-1.5 px-3 font-mono text-xs text-bc-text-secondary whitespace-nowrap">{{ v.name }}</td>
                 <td class="py-1.5 px-3 font-mono text-xs whitespace-nowrap">
                   <span v-if="v.value != null" class="text-bc-text-primary">{{ v.value }}</span>
-                  <span v-else class="text-bc-text-muted" title="Non définie : valeur par défaut d'Ollama">{{ v.default }} <span class="italic">(défaut)</span></span>
+                  <span v-else class="text-bc-text-secondary" title="Non définie : valeur par défaut d'Ollama">{{ v.default }} <span class="italic">(défaut)</span></span>
                 </td>
                 <td class="py-1.5 px-3 text-xs text-bc-text-secondary">{{ v.description }}</td>
               </tr>
@@ -178,7 +178,7 @@
           </table>
         </div>
 
-        <p class="mt-2 text-xs text-bc-text-muted">
+        <p class="mt-2 text-xs text-bc-text-secondary">
           Pour les modifier : {{ howToChange }}, puis redémarrer Ollama.
         </p>
       </template>

@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-3">
-    <p class="text-xs text-bc-text-muted">
+    <p class="text-xs text-bc-text-secondary">
       Pour un GGUF qui n'est pas sur HuggingFace (ou un fichier découpé, qu'Ollama ne sait pas télécharger) : le fichier est enregistré dans
       <span class="font-mono">~/.ollama/gguf</span> puis transformé en modèle Ollama.
     </p>
@@ -13,11 +13,11 @@
       <button
         type="button"
         @click="fileInput?.click()"
-        class="shrink-0 px-3 py-1 text-xs rounded border-2 border-bc-border-strong bg-bc-surface text-bc-text-secondary shadow-bc-hard-sm transition-transform duration-75 hover:bg-bc-surface-alt active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
+        class="shrink-0 px-3 py-1 text-xs rounded-md border-2 border-bc-border-strong bg-bc-surface text-bc-text-secondary shadow-bc-hard-sm transition-transform duration-75 hover:bg-bc-surface-alt active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
       >
         Parcourir…
       </button>
-      <span class="text-xs text-bc-text-muted truncate">{{ selectedFile?.name ?? 'Aucun fichier sélectionné' }}</span>
+      <span class="text-xs text-bc-text-secondary truncate">{{ selectedFile?.name ?? 'Aucun fichier sélectionné' }}</span>
       <input ref="fileInput" type="file" accept=".gguf" class="hidden" @change="onFileSelected" />
     </div>
 
@@ -47,7 +47,7 @@
         <span class="shrink-0 font-mono text-bc-text-secondary">{{ formatSize(f.size) }}</span>
         <span
           v-if="f.imported_by.length"
-          class="shrink-0 font-mono text-[10px] px-1 rounded border border-bc-green text-bc-green"
+          class="shrink-0 font-mono text-[10px] px-1 rounded-md border border-bc-green text-bc-green"
           :title="`Déjà importé : utilisé par ${f.imported_by.join(', ')}. Ollama en garde sa propre copie, ce fichier peut être supprimé sans casser ces modèles.`"
         >
           déjà importé ({{ f.imported_by.length }})
@@ -58,8 +58,8 @@
           @blur="confirmDelete = null"
           :disabled="deleting === f.filename"
           :title="f.imported_by.length ? 'Supprimer ce doublon pour libérer la place' : 'Attention : aucun modèle n\'utilise ce fichier, il faudra le retélécharger pour l\'importer'"
-          class="shrink-0 px-1.5 py-0.5 rounded border text-[10px] disabled:opacity-40"
-          :class="confirmDelete === f.filename ? 'border-bc-danger bg-bc-danger text-bc-paper' : 'border-bc-border text-bc-text-muted hover:border-bc-danger hover:text-bc-danger'"
+          class="shrink-0 px-1.5 py-0.5 rounded-md border text-[10px] disabled:opacity-40"
+          :class="confirmDelete === f.filename ? 'border-bc-danger bg-bc-danger text-bc-paper' : 'border-bc-border text-bc-text-secondary hover:border-bc-danger hover:text-bc-danger'"
         >
           {{ deleting === f.filename ? '…' : confirmDelete === f.filename ? 'Confirmer' : 'Supprimer' }}
         </button>
@@ -76,7 +76,7 @@
       <button
         @click="submit"
         :disabled="importing"
-        class="shrink-0 px-3 py-1 text-xs rounded border-2 border-bc-border-strong bg-bc-orange text-bc-ink shadow-bc-hard-sm transition-transform duration-75 hover:bg-bc-orange-dark active:translate-x-0.5 active:translate-y-0.5 active:shadow-none disabled:border-bc-border disabled:bg-bc-surface-alt disabled:text-bc-text-muted disabled:shadow-none disabled:cursor-not-allowed"
+        class="shrink-0 px-3 py-1 text-xs rounded-md border-2 border-bc-border-strong bg-bc-orange text-bc-ink shadow-bc-hard-sm transition-transform duration-75 hover:bg-bc-orange-dark active:translate-x-0.5 active:translate-y-0.5 active:shadow-none disabled:border-bc-border disabled:bg-bc-surface-alt disabled:text-bc-text-muted disabled:shadow-none disabled:cursor-not-allowed"
       >
         {{ importing ? `Import… ${progress}%` : 'Importer' }}
       </button>
