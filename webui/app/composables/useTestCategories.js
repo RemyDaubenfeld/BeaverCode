@@ -128,6 +128,40 @@ export const categoryIcons = {
 }
 export const defaultCategoryIcon = QuestionMarkCircleIcon
 
+// Capacités RÉELLEMENT requises sur un modèle pour pouvoir lancer les tests
+// d'une catégorie, vérifiées via `model.capabilities` — renvoyé nativement par
+// `/api/tags` (completion, tools, thinking, vision, embedding, insert, voir
+// ModelList.vue). Partagé entre BenchmarkRunner (sélection des tests) et
+// BenchmarkResultsView (« Compléter les tests manquants »). Différent de categoryCapability (qui ne sert qu'au
+// regroupement visuel), même si les deux coïncident aujourd'hui : "reasoning"
+// (énigmes en texte normal) ne demande que "completion" et est affiché sous
+// Complétion. Sans ce garde-fou basé sur les vraies capacités, un modèle
+// embedding-only (capabilities: ["embedding"]) tombait dans le fallback
+// générique de l'heuristique par nom côté Python et se voyait proposer TOUS
+// les tests, alors qu'il ne peut générer aucun texte.
+export const categoryRequiredCapabilities = {
+  code: ['completion'],
+  chat: ['completion'],
+  reasoning: ['completion'],
+  instruction_following: ['completion'],
+  summarization: ['completion'],
+  structured_extraction: ['completion'],
+  classification: ['completion'],
+  data_analysis: ['completion'],
+  translation: ['completion'],
+  security: ['completion'],
+  code_style: ['completion'],
+  tool_calling: ['completion', 'tools'],
+  vision: ['completion', 'vision'],
+  // passés deux fois, réflexion activée puis coupée (voir run_thinking_test dans benchmark.py)
+  thinking: ['completion', 'thinking'],
+}
+
+// capacités exigées pour une catégorie (catégorie inconnue : simple complétion)
+export function requiredCapabilities(category) {
+  return categoryRequiredCapabilities[category] ?? ['completion']
+}
+
 export function useTestCategories() {
-  return { categoryLabels, categoryCapability, capabilityGroupLabels, capabilityOrder, knownCategories, categoryIcons, capabilityGroupIcons, defaultCategoryIcon }
+  return { categoryLabels, categoryCapability, capabilityGroupLabels, capabilityOrder, knownCategories, categoryIcons, capabilityGroupIcons, defaultCategoryIcon, categoryRequiredCapabilities, requiredCapabilities }
 }

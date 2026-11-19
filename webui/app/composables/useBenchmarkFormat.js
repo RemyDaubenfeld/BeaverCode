@@ -18,9 +18,16 @@ export function scoreColorClass(score) {
 export function formatDuration(seconds) {
   if (!seconds || seconds <= 0) return '0s'
   if (seconds < 60) return `${Math.round(seconds)}s`
-  const minutes = Math.floor(seconds / 60)
-  const rest = Math.round(seconds % 60)
-  return `${minutes}m ${rest}s`
+  if (seconds < 3600) {
+    const minutes = Math.floor(seconds / 60)
+    const rest = Math.round(seconds % 60)
+    return `${minutes}m ${rest}s`
+  }
+  // au-delà d'une heure (estimations de « Compléter les tests manquants ») : les secondes ne disent plus rien
+  const totalMinutes = Math.round(seconds / 60) // arrondi avant découpage : 7199 s → « 2h 00m », pas « 1h 60m »
+  const hours = Math.floor(totalMinutes / 60)
+  const minutes = totalMinutes % 60
+  return `${hours}h ${String(minutes).padStart(2, '0')}m`
 }
 
 // Réglages de génération d'un run / d'un test (voir RUN_OPTIONS dans benchmark.py) → texte court.

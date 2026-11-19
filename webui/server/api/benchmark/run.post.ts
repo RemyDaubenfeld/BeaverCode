@@ -76,7 +76,12 @@ export default defineEventHandler(async (event) => {
       console.error('Erreur lors de la mise à jour du comparatif :', error);
     });
   });
-  event.node.req.on('close', () => emitter.stop());
+  // Annulation (le navigateur coupe la connexion) : écouter la RÉPONSE, pas la requête. `req` émet « close »
+  // dès que son corps est lu (Node ≥ 16), donc avant même cet écouteur : le script n'était jamais arrêté.
+  // `res` émet « close » à la coupure de la connexion, ou après la fin normale (writableFinished vaut alors true).
+  event.node.res.on('close', () => {
+    if (!event.node.res.writableFinished) emitter.stop();
+  });
 
   return new Promise((resolve) => {
     event.node.res.on('finish', resolve);

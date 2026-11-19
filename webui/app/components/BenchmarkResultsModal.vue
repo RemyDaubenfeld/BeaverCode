@@ -25,9 +25,16 @@
       </button>
     </div>
 
-    <p v-if="errorMessage" class="mb-3 rounded-bc border border-bc-danger-dark bg-bc-danger-tint px-3 py-2 text-sm text-bc-danger">
-      {{ errorMessage }}
-    </p>
+    <div v-if="errorMessage" class="mb-3 flex flex-wrap items-center gap-2 rounded-bc border border-bc-danger-dark bg-bc-danger-tint px-3 py-2 text-sm text-bc-danger">
+      <p class="flex-1">{{ errorMessage }}</p>
+      <button
+        v-if="blockedByOtherRun"
+        @click="stopBenchmark"
+        class="shrink-0 px-3 py-1.5 text-sm rounded-bc bg-bc-danger text-bc-paper border-2 border-bc-border-strong shadow-bc-hard-sm active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-transform duration-75 cursor-pointer"
+      >
+        Arrêter le benchmark en cours
+      </button>
+    </div>
 
     <p v-if="modelOrder.length === 0" class="text-sm text-bc-text-muted">En attente des premiers résultats…</p>
 
@@ -102,6 +109,8 @@ const {
   modelsDoneCount,
   globalProgressPercent,
   cancelBenchmark,
+  stopBenchmark,
+  blockedByOtherRun,
   resetRun,
 } = useBenchmarkRun()
 

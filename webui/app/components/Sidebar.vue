@@ -1,4 +1,4 @@
-<template>
+3<template>
   <aside class="flex justify-between h-screen w-56 shrink-0 flex-col border-r-2 border-bc-border-strong bg-bc-surface">
     <!-- haut : logo + navigation -->
     <div class="p-4">
@@ -41,8 +41,7 @@
       <div v-if="gpus.length === 0" class="flex items-center gap-2 py-2 text-bc-text-primary">
         <img class="size-12 shrink-0" src="assets/img/gpu_color.webp" alt="GPU">
         <div class="min-w-0 flex-1 text-center">
-          <p class="mb-1 text-xs font-medium">Aucun GPU</p>
-          <p class="text-[10px] text-bc-text-secondary">Non détecté</p>
+          <p class="mb-1 text-xs font-medium">Aucun GPU détecté</p>
         </div>
       </div>
 

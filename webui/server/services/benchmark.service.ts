@@ -49,14 +49,28 @@ export async function getBenchmarkManifest(models?: string[], withSettings = tru
 // deux runs se sont retrouvés en parallèle sur le même modèle. Le premier avait perdu sa page (rechargement de
 // page ou du serveur de dev), qui avait réactivé le bouton de lancement alors que le processus Python
 // continuait. Une variable en mémoire aurait été remise à zéro par ce même rechargement.
+// Motif `pgrep`/`pkill` d'un run lancé par la WebUI : l'interpréteur Python suivi du script et de --stream-json
+// (`^\S*python\S* ` : écarte les shells dont la ligne de commande contient le chemin, ex. un `grep benchmark.py`).
+// Il reconnaît aussi un run lancé avant un rechargement de Nitro, que le serveur ne référence plus.
+const RUN_PATTERN = `^\\S*python\\S* ${BENCHMARK_SCRIPT.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} --stream-json`;
+
 export async function isBenchmarkRunning(): Promise<boolean> {
   try {
-    // commande qui COMMENCE par un python (pas un shell ou un éditeur dont la ligne contiendrait ce texte)
-    const script = BENCHMARK_SCRIPT.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    await execFileAsync('pgrep', ['-f', `^\\S*python\\S* ${script} --stream-json`], { timeout: 3000 });
-    return true; // pgrep sort en code 0 s'il trouve au moins un processus
+    await execFileAsync('pgrep', ['-f', RUN_PATTERN], { timeout: 3000 });
+    return true;
   } catch {
-    return false; // code 1 : aucun processus (ou pgrep absent : on ne bloque pas)
+    return false; // code 1 : aucun processus
+  }
+}
+
+// Arrête tout run en cours (SIGTERM), y compris un run orphelin dont le navigateur a perdu la trace
+// (page rechargée, Nitro relancé). Renvoie false s'il n'y avait rien à arrêter.
+export async function stopBenchmark(): Promise<boolean> {
+  try {
+    await execFileAsync('pkill', ['-f', RUN_PATTERN], { timeout: 3000 });
+    return true;
+  } catch {
+    return false;
   }
 }
 

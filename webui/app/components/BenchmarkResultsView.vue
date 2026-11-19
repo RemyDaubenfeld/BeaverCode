@@ -33,7 +33,18 @@
     <section>
       <div class="flex items-center gap-2 mb-3 flex-wrap">
         <h2 class="font-display text-sm font-semibold uppercase tracking-wide text-bc-text-muted">Comparatif des modèles</h2>
-        <div class="ml-auto flex rounded-bc border-2 border-bc-border-strong overflow-hidden">
+        <button
+          v-if="missingTotal"
+          @click="completing = 'all'"
+          :disabled="running"
+          :title="running ? 'Un benchmark est déjà en cours' : 'Lancer, pour chaque modèle, les tests qu\'il peut passer mais qui manquent au comparatif'"
+          class="ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded-bc border-2 border-bc-border-strong bg-bc-green text-xs font-semibold text-bc-ink shadow-bc-hard-sm transition-transform duration-75 active:translate-x-0.5 active:translate-y-0.5 active:shadow-none disabled:border-bc-border disabled:bg-bc-surface-alt disabled:text-bc-text-muted disabled:shadow-none disabled:cursor-not-allowed cursor-pointer"
+        >
+          <PlusCircleIcon class="w-4 h-4" />
+          Compléter {{ missingTotal }} test{{ missingTotal > 1 ? 's' : '' }} manquant{{ missingTotal > 1 ? 's' : '' }}
+          ({{ missingModelCount }} modèle{{ missingModelCount > 1 ? 's' : '' }})
+        </button>
+        <div class="flex rounded-bc border-2 border-bc-border-strong overflow-hidden" :class="missingTotal ? '' : 'ml-auto'">
           <button
             @click="comparisonMode = 'global'"
             class="font-display px-3 py-1 text-xs cursor-pointer"
@@ -47,6 +58,44 @@
             :class="comparisonMode === 'capability' ? 'bg-bc-orange text-bc-ink' : 'text-bc-text-muted hover:bg-bc-surface-alt'"
           >
             Par capacité
+          </button>
+        </div>
+      </div>
+
+      <!-- Confirmation avant de compléter : le plan peut représenter plusieurs heures -->
+      <div v-if="completing && Object.keys(completionPlan).length" class="mb-3 rounded-bc border-2 border-bc-border-strong bg-bc-surface px-3 py-2.5 text-xs shadow-bc-hard">
+        <p class="font-display mb-2 text-sm font-semibold text-bc-text-primary">
+          Compléter {{ completionCount }} test{{ completionCount > 1 ? 's' : '' }}
+          <span class="font-normal text-bc-text-muted">— durée estimée ≈ {{ formatDuration(completionEstimate.total) }}<template v-if="completionEstimate.unknown">, plus {{ completionEstimate.unknown }} test{{ completionEstimate.unknown > 1 ? 's' : '' }} sans référence</template></span>
+        </p>
+        <table class="mb-2 w-full font-mono">
+          <tbody>
+            <tr v-for="(ids, model) in completionPlan" :key="model" class="border-t border-bc-border">
+              <td class="py-1 pr-3 text-bc-text-secondary">{{ model }}</td>
+              <td class="py-1 pr-3 text-bc-text-muted whitespace-nowrap">{{ ids.length }} test{{ ids.length > 1 ? 's' : '' }}</td>
+              <td class="py-1 pr-3 text-bc-text-muted whitespace-nowrap">
+                {{ completionEstimate.perModel[model] ? '≈ ' + formatDuration(completionEstimate.perModel[model]) : 'durée inconnue' }}
+              </td>
+              <td class="py-1 text-bc-text-muted truncate max-w-md" :title="ids.join(', ')">{{ ids.join(', ') }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="mb-1 text-bc-text-muted">
+          Réglages par défaut (Paramétrage) : <span class="font-mono text-bc-text-secondary">{{ formatRunOptions(manifest?.default_options) }}</span>
+          · juge : <span class="font-mono text-bc-text-secondary">{{ completionJudge ?? 'aucun (règles uniquement)' }}</span>
+        </p>
+        <p class="mb-2 text-bc-text-muted">
+          Estimation : durée moyenne des tests déjà passés par le modèle (même catégorie si possible), hors temps du juge.
+          Les tests de réflexion imposent leurs propres limites (8192 tokens, contexte 9216).
+        </p>
+        <div class="flex justify-end gap-2">
+          <button @click="completing = null" class="px-2.5 py-1 rounded-bc border-2 border-bc-border text-bc-text-secondary hover:bg-bc-surface-alt cursor-pointer">Annuler</button>
+          <button
+            @click="startCompletion"
+            :disabled="running"
+            class="px-2.5 py-1 rounded-bc border-2 border-bc-border-strong bg-bc-orange font-semibold text-bc-ink shadow-bc-hard-sm transition-transform duration-75 active:translate-x-0.5 active:translate-y-0.5 active:shadow-none disabled:border-bc-border disabled:bg-bc-surface-alt disabled:text-bc-text-muted disabled:shadow-none disabled:cursor-not-allowed cursor-pointer"
+          >
+            {{ running ? 'Benchmark en cours…' : 'Lancer' }}
           </button>
         </div>
       </div>
@@ -99,6 +148,16 @@
                 {{ m.avg_score }}/5 — {{ m.verdict }}
                 <span class="text-bc-text-muted font-normal">({{ m.total_tests }} test{{ m.total_tests > 1 ? 's' : '' }})</span>
               </span>
+              <button
+                v-if="missingByModel[m.model]"
+                @click="completing = m.model"
+                :disabled="running"
+                :title="`Compléter ${missingByModel[m.model].length} test${missingByModel[m.model].length > 1 ? 's' : ''} manquant${missingByModel[m.model].length > 1 ? 's' : ''}`"
+                class="flex items-center gap-0.5 p-1 rounded text-bc-green hover:text-bc-text-primary hover:bg-bc-surface disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              >
+                <PlusCircleIcon class="w-4 h-4" />
+                <span class="font-mono text-xs">{{ missingByModel[m.model].length }}</span>
+              </button>
               <button @click="viewingTestsModel = m.model" title="Voir le détail des tests" class="p-1 rounded text-bc-text-muted hover:text-bc-text-primary hover:bg-bc-surface cursor-pointer">
                 <ListBulletIcon class="w-4 h-4" />
               </button>
@@ -180,13 +239,15 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { EyeIcon, TrashIcon, ListBulletIcon, MagnifyingGlassIcon } from '@heroicons/vue/24/outline'
+import { ref, computed, onMounted, watch } from 'vue'
+import { EyeIcon, TrashIcon, ListBulletIcon, MagnifyingGlassIcon, PlusCircleIcon } from '@heroicons/vue/24/outline'
 import BenchmarkRunViewModal from './BenchmarkRunViewModal.vue'
 import BenchmarkModelTestsModal from './BenchmarkModelTestsModal.vue'
 
-const { scoreColorClass } = useBenchmarkFormat()
-const { categoryCapability, capabilityGroupLabels, capabilityOrder, capabilityGroupIcons, defaultCategoryIcon } = useTestCategories()
+const { scoreColorClass, formatDuration, formatRunOptions } = useBenchmarkFormat()
+const { categoryCapability, capabilityGroupLabels, capabilityOrder, capabilityGroupIcons, defaultCategoryIcon, requiredCapabilities } = useTestCategories()
+const { modelList } = useModels()
+const { running, runBenchmark } = useBenchmarkRun()
 
 const runs = ref([])
 const loadingRuns = ref(true)
@@ -232,6 +293,106 @@ async function loadComparison() {
 onMounted(() => {
   loadRuns()
   loadComparison()
+  loadManifest()
+})
+
+// fin d'un benchmark (lancé d'ici ou de l'onglet Tests) : les runs et le comparatif ont changé
+watch(running, (now, before) => {
+  if (before && !now) {
+    loadRuns()
+    loadComparison()
+  }
+})
+
+// --- Compléter les tests manquants
+// Pour chaque modèle du comparatif encore installé : les tests de la banque qu'il PEUT passer (capacités Ollama
+// réelles, même règle que l'onglet Tests) mais qui n'y figurent pas. Les tests en erreur, exclus du comparatif,
+// en font donc partie, comme les tests ajoutés à la banque depuis son dernier run.
+const manifest = ref(null)
+
+async function loadManifest() {
+  try {
+    manifest.value = await $fetch('/api/benchmark/manifest')
+  } catch {
+    manifest.value = null // pas de manifest : pas de bouton, le reste du comparatif reste utilisable
+  }
+}
+
+const testCategoryById = computed(() => {
+  const map = {}
+  for (const c of manifest.value?.categories ?? []) for (const t of c.tests) map[t.id] = c.id
+  return map
+})
+
+const missingByModel = computed(() => {
+  const out = {}
+  if (!manifest.value || !modelList.value) return out
+  for (const m of comparison.value) {
+    const caps = modelList.value.find((x) => x.name === m.model)?.capabilities
+    if (!caps) continue // supprimé d'Ollama depuis : impossible à relancer
+    const done = new Set(m.tests.map((t) => t.test_id))
+    const ids = manifest.value.categories
+      .filter((c) => requiredCapabilities(c.id).every((cap) => caps.includes(cap)))
+      .flatMap((c) => c.tests.map((t) => t.id))
+      .filter((id) => !done.has(id))
+    if (ids.length) out[m.model] = ids
+  }
+  return out
+})
+
+const missingTotal = computed(() => Object.values(missingByModel.value).reduce((n, ids) => n + ids.length, 0))
+const missingModelCount = computed(() => Object.keys(missingByModel.value).length)
+
+const completing = ref(null) // null | 'all' | nom d'un modèle
+
+const completionPlan = computed(() => {
+  if (completing.value === 'all') return missingByModel.value
+  const ids = missingByModel.value[completing.value]
+  return ids ? { [completing.value]: ids } : {}
+})
+const completionCount = computed(() => Object.values(completionPlan.value).reduce((n, ids) => n + ids.length, 0))
+
+// Durée estimée d'un test manquant : moyenne des tests de la même catégorie déjà passés par ce modèle, sinon
+// moyenne de tous ses tests. Une catégorie jamais passée (ex. les tests de réflexion, passés deux fois)
+// peut donc être sous-estimée : l'ordre de grandeur compte plus que la précision.
+const completionEstimate = computed(() => {
+  const perModel = {}
+  let total = 0
+  let unknown = 0
+  const avg = (tests) => tests.reduce((s, t) => s + (t.elapsed_sec ?? 0), 0) / tests.length
+  for (const [model, ids] of Object.entries(completionPlan.value)) {
+    const tests = comparison.value.find((m) => m.model === model)?.tests ?? []
+    let sec = 0
+    for (const id of ids) {
+      const sameCategory = tests.filter((t) => t.category === testCategoryById.value[id])
+      if (sameCategory.length) sec += avg(sameCategory)
+      else if (tests.length) sec += avg(tests)
+      else unknown++
+    }
+    perModel[model] = sec
+    total += sec
+  }
+  return { perModel, total, unknown }
+})
+
+// juge par défaut (Paramétrage), s'il est installé ; sinon notation par règles seule
+const completionJudge = computed(() => {
+  const judge = manifest.value?.default_judge
+  return judge && modelList.value?.some((m) => m.name === judge) ? judge : null
+})
+
+function startCompletion() {
+  runBenchmark({
+    plan: completionPlan.value,
+    judgeModel: completionJudge.value,
+    options: manifest.value?.default_options,
+  })
+  completing.value = null // la progression s'affiche dans la fenêtre du run en cours
+}
+
+// le modèle visé a disparu du plan (tests complétés, modèle supprimé) : on referme la confirmation
+watch(completionPlan, (plan) => {
+  if (completing.value && !Object.keys(plan).length) completing.value = null
 })
 
 const filteredComparison = computed(() => {

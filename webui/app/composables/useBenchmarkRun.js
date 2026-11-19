@@ -13,6 +13,8 @@ const results = reactive({})
 const modelOrder = ref([])
 const expandedModels = ref(new Set())
 const showResultsModal = ref(false)
+// lancement refusé (409) parce qu'un autre run tourne : la fenêtre propose de l'arrêter
+const blockedByOtherRun = ref(false)
 let abortController = null
 
 function modelProgressPercent(model) {
@@ -95,6 +97,7 @@ async function runBenchmark({ models, testIds, judgeModel, options, plan }) {
   }
   running.value = true
   errorMessage.value = ''
+  blockedByOtherRun.value = false
   showResultsModal.value = true
   Object.keys(results).forEach((k) => delete results[k])
   expandedModels.value = new Set()
@@ -114,6 +117,7 @@ async function runBenchmark({ models, testIds, judgeModel, options, plan }) {
     if (!response.ok || !response.body) {
       // message du serveur (ex. 409 « un benchmark est déjà en cours ») plutôt qu'un message générique
       const detail = await response.json().catch(() => null)
+      blockedByOtherRun.value = response.status === 409
       throw new Error(detail?.statusMessage || detail?.message || 'Échec du lancement du benchmark')
     }
 
@@ -141,8 +145,21 @@ async function runBenchmark({ models, testIds, judgeModel, options, plan }) {
   }
 }
 
-function cancelBenchmark() {
+// Couper le flux suffit normalement (le serveur arrête le script à la fermeture de la connexion) ; l'appel à
+// /stop arrête en plus un run que cette page ne suit pas (lancé avant un rechargement)
+async function cancelBenchmark() {
   abortController?.abort()
+  await stopBenchmark()
+}
+
+async function stopBenchmark() {
+  try {
+    await $fetch('/api/benchmark/stop', { method: 'POST' })
+    blockedByOtherRun.value = false
+    errorMessage.value = ''
+  } catch {
+    errorMessage.value = "Impossible d'arrêter le benchmark en cours"
+  }
 }
 
 // Efface le dernier run consulté (bouton "OK" de BenchmarkResultsModal) : au
@@ -155,6 +172,7 @@ function resetRun() {
   modelOrder.value = []
   expandedModels.value = new Set()
   errorMessage.value = ''
+  blockedByOtherRun.value = false
   showResultsModal.value = false
 }
 
@@ -174,6 +192,8 @@ export function useBenchmarkRun() {
     globalProgressPercent,
     runBenchmark,
     cancelBenchmark,
+    stopBenchmark,
+    blockedByOtherRun,
     resetRun,
   }
 }
