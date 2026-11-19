@@ -43,7 +43,9 @@
         Modèle{{ missingModels.length > 1 ? 's' : '' }} supprimé{{ missingModels.length > 1 ? 's' : '' }} depuis ce run, ignoré{{ missingModels.length > 1 ? 's' : '' }} : {{ missingModels.join(', ') }}
       </p>
     </div>
-    <div v-else class="max-h-[70vh] overflow-y-auto space-y-2 pr-1">
+    <!-- condition explicite, pas v-else : un v-else se rattache au v-if juste au-dessus (le bandeau de relance),
+         pas au « Chargement… », et s'afficherait pendant le chargement, quand run est encore null -->
+    <div v-if="run && !loading && !error" class="max-h-[70vh] overflow-y-auto space-y-2 pr-1">
       <details v-for="model in run.models" :key="model.model" class="group rounded-bc border border-bc-border bg-bc-surface-alt" open>
         <summary class="flex items-center justify-between gap-2 px-3 py-2 cursor-pointer select-none">
           <span class="flex items-center gap-1.5">
