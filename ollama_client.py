@@ -52,6 +52,10 @@ def encode_image_bytes(data: bytes) -> str:
     return base64.b64encode(data).decode("utf-8")
 
 
+class OllamaError(RuntimeError):
+    """Erreur renvoyée par Ollama dans sa réponse (ligne {"error": "..."})."""
+
+
 @dataclass
 class ModelInfo:
     """
@@ -188,6 +192,7 @@ class OllamaClient:
         tools: list[dict[str, Any]] | None = None,
         options: dict[str, Any] | None = None,
         images: list[str] | None = None,
+        think: bool | None = None,
     ) -> Iterator[ChatChunk]:
         """
         Appel STREAMÉ à /api/chat : on travaille avec un historique de
@@ -206,8 +211,15 @@ class OllamaClient:
 
         `images` (base64, voir encode_image_bytes()) est attaché au DERNIER
         message de `messages` — c'est la convention Ollama pour /api/chat
-        avec un modèle vision. Pas encore utilisé (catégorie de benchmark
-        `vision` non écrite, voir roadmap étape 2).
+        avec un modèle vision (catégorie de benchmark `vision`).
+
+        `think` : True / False active ou coupe la réflexion d'un modèle à
+        thinking (paramètre `think` d'Ollama) ; None = comportement par défaut
+        du modèle. Avec True, la réflexion arrive à part (ChatChunk.thinking),
+        hors de `content`.
+
+        Lève OllamaError si Ollama signale une erreur (modèle introuvable,
+        plantage en cours de génération…).
 
         Exemple d'utilisation :
             for chunk in client.chat("qwen2.5-coder:7b", [{"role": "user", "content": "Bonjour"}]):
@@ -223,6 +235,8 @@ class OllamaClient:
             payload["tools"] = tools
         if options:
             payload["options"] = options
+        if think is not None:
+            payload["think"] = think
 
         with self._client.stream("POST", "/api/chat", json=payload) as r:
             # Ollama envoie une ligne JSON par "morceau" de réponse générée.
@@ -234,6 +248,14 @@ class OllamaClient:
                 if not line:
                     continue  # ignore les lignes vides
                 data = json.loads(line)
+                # Erreur signalée PENDANT la réponse : Ollama a déjà renvoyé « 200 OK », il ne peut plus changer
+                # le code HTTP et envoie à la place une ligne {"error": "..."} puis ferme le flux. Ex. réel
+                # (17/11) : « CUDA error: out of memory » à l'encodage d'une image, llama-server planté. Ignorer
+                # cette ligne transformait la panne en « réponse vide » notée 0 → on lève une exception, que le
+                # benchmark enregistre comme test en erreur (relançable). Couvre aussi les erreurs HTTP (404
+                # modèle introuvable…), dont le corps a le même format.
+                if data.get("error"):
+                    raise OllamaError(data["error"])
                 # .get("message", {}) : sécurité si jamais une ligne ne contient
                 # pas cette clé (ne devrait pas arriver avec l'API Ollama standard,
                 # mais évite un plantage si le format change légèrement un jour)

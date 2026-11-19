@@ -1,4 +1,4 @@
-import { runBenchmarkStream } from '../../services/benchmark.service';
+import { isBenchmarkRunning, runBenchmarkStream } from '../../services/benchmark.service';
 import { syncLeaderboardFromRun } from '../../services/results.service';
 import type { BenchmarkRunOptions, BenchmarkRunRequest } from '../../types/benchmark';
 
@@ -44,6 +44,13 @@ export default defineEventHandler(async (event) => {
   }
   // validé AVANT d'ouvrir le flux NDJSON : une erreur 400 doit partir comme une réponse normale
   const options = validateOptions(body.options);
+  // deux runs à la fois se partagent le GPU (chacun deux fois plus lent) et empêchent Ollama de décharger le modèle
+  if (await isBenchmarkRunning()) {
+    throw createError({
+      statusCode: 409,
+      statusMessage: 'Un benchmark est déjà en cours (peut-être lancé avant un rechargement de la page) : attendre sa fin ou l\'arrêter avant d\'en lancer un autre',
+    });
+  }
 
   setResponseHeader(event, 'Content-Type', 'application/x-ndjson');
   setResponseHeader(event, 'Cache-Control', 'no-cache');

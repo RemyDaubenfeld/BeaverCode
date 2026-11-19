@@ -26,6 +26,7 @@ export const KNOWN_CATEGORIES = [
   'code_style',
   'tool_calling',
   'vision',
+  'thinking',
 ] as const;
 
 type TestsBank = Record<string, TestBankEntry[]>;

@@ -70,7 +70,7 @@ Le travail UI doit suivre la charte graphique BeaverCode (palette sombre et chau
 
 - `benchmark.py` — point d'entrée CLI et logique de scoring (règles + juge LLM optionnel via `benchmark-judge:latest`, surchargeable avec `BENCHMARK_JUDGE`)
 - `lib/config.py` — réglages par défaut surchargeables par variable d'env (`OLLAMA_BASE_URL`, `BENCHMARK_TEMPERATURE`, `BENCHMARK_NUM_CTX`, `BENCHMARK_NUM_PREDICT`) ; les trois options de génération sont aussi surchargeables en CLI (`--temperature`, `--num-ctx`, `--num-predict`, passés par la WebUI) et enregistrées avec chaque résultat (`options` du run, du modèle et de chaque test). Le juge garde des réglages fixes (`JUDGE_OPTIONS`)
-- `lib/tests_bank.py` — définition des cas de test par catégorie (code, chat, reasoning, security, code_style, tool_calling, etc.)
+- `lib/tests_bank.py` — charge `lib/tests_bank.json`, les cas de test par catégorie (code, chat, reasoning, security, code_style, tool_calling, vision, thinking…), aussi édités depuis la WebUI (« Gérer les tests »). Les tests `thinking` (modèles ayant la capacité) sont vérifiés exactement sur la ligne `ANSWER:` (`expected_answer`, sans juge) et passés deux fois, réflexion activée puis coupée (`think` d'Ollama, `run_thinking_test()`)
 - `lib/metrics.py`, `lib/exports.py` — scoring/métriques et export des résultats
 - Le modèle juge doit être texte seul — un juge multimodal (ex. basé sur `gemma4:e4b`) plante lors de l'offload CPU du projecteur vision (bug connu llama.cpp/Ollama).
 

@@ -111,7 +111,11 @@ async function runBenchmark({ models, testIds, judgeModel, options, plan }) {
       body: JSON.stringify(plan ? { plan, judgeModel, options } : { models, testIds, judgeModel, options }),
       signal: abortController.signal,
     })
-    if (!response.ok || !response.body) throw new Error('Échec du lancement du benchmark')
+    if (!response.ok || !response.body) {
+      // message du serveur (ex. 409 « un benchmark est déjà en cours ») plutôt qu'un message générique
+      const detail = await response.json().catch(() => null)
+      throw new Error(detail?.statusMessage || detail?.message || 'Échec du lancement du benchmark')
+    }
 
     const reader = response.body.getReader()
     const decoder = new TextDecoder()

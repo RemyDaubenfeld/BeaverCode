@@ -384,10 +384,9 @@ async function loadManifest() {
 // d'une catégorie, vérifiées via `model.capabilities` — renvoyé nativement par
 // `/api/tags` (completion, tools, thinking, vision, embedding, insert, voir
 // ModelList.vue). Différent de categoryCapability (qui ne sert qu'au
-// regroupement visuel) : ex. "reasoning" est affiché sous "Thinking" mais ne
-// nécessite pas réellement la capacité "thinking" pour tourner (un prompt de
-// raisonnement classique passe par un simple /api/chat) — seul "completion"
-// est requis. Sans ce garde-fou basé sur les vraies capacités, un modèle
+// regroupement visuel), même si les deux coïncident aujourd'hui : "reasoning"
+// (énigmes en texte normal) ne demande que "completion" et est affiché sous
+// Complétion. Sans ce garde-fou basé sur les vraies capacités, un modèle
 // embedding-only (capabilities: ["embedding"]) tombait dans le fallback
 // générique de l'heuristique par nom côté Python et se voyait proposer TOUS
 // les tests, alors qu'il ne peut générer aucun texte.
@@ -405,6 +404,8 @@ const categoryRequiredCapabilities = {
   code_style: ['completion'],
   tool_calling: ['completion', 'tools'],
   vision: ['completion', 'vision'],
+  // passés deux fois, réflexion activée puis coupée (voir run_thinking_test dans benchmark.py)
+  thinking: ['completion', 'thinking'],
 }
 
 // Une catégorie est disponible si AU MOINS UN des modèles sélectionnés possède

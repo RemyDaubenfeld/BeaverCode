@@ -45,6 +45,21 @@ export async function getBenchmarkManifest(models?: string[], withSettings = tru
   return manifest;
 }
 
+// Un benchmark Python tourne-t-il déjà ? On interroge les PROCESSUS, pas une variable du serveur : le 18/11,
+// deux runs se sont retrouvés en parallèle sur le même modèle. Le premier avait perdu sa page (rechargement de
+// page ou du serveur de dev), qui avait réactivé le bouton de lancement alors que le processus Python
+// continuait. Une variable en mémoire aurait été remise à zéro par ce même rechargement.
+export async function isBenchmarkRunning(): Promise<boolean> {
+  try {
+    // commande qui COMMENCE par un python (pas un shell ou un éditeur dont la ligne contiendrait ce texte)
+    const script = BENCHMARK_SCRIPT.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    await execFileAsync('pgrep', ['-f', `^\\S*python\\S* ${script} --stream-json`], { timeout: 3000 });
+    return true; // pgrep sort en code 0 s'il trouve au moins un processus
+  } catch {
+    return false; // code 1 : aucun processus (ou pgrep absent : on ne bloque pas)
+  }
+}
+
 export function runBenchmarkStream(params: BenchmarkRunRequest): LogEmitter {
   mkdirSync(RESULTS_DIR, { recursive: true });
   const runId = `run_${new Date().toISOString().replace(/[:.]/g, '-')}`;

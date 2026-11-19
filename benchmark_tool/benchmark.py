@@ -73,6 +73,7 @@ def run_prompt(
     images: list[str] | None = None,
     num_predict: int | None = None,
     options: dict | None = None,
+    think: bool | None = None,
 ) -> dict:
     """`options` : options de génération (défaut : RUN_OPTIONS) ; `num_predict` les surcharge."""
     messages = []
@@ -99,6 +100,7 @@ def run_prompt(
         options=options,
         tools=tools,
         images=images,
+        think=think,
     ):
         if ttft is None and not chunk.done:
             ttft = time.time() - start
@@ -288,6 +290,7 @@ ALWAYS_INCLUDED_CATEGORIES = [
     "data_analysis",
     "translation",
     "tool_calling",
+    "thinking",  # écarté ensuite pour les modèles sans la capacité « thinking » (REQUIRED_CAPABILITY)
 ]
 
 def get_tests_for_model(model_name: str) -> list[dict]:
@@ -365,7 +368,7 @@ def emit_json(event: dict) -> None:
 
 # Capacité Ollama REQUISE par une catégorie de tests (les autres ne demandent que « completion ») — même
 # liste que categoryRequiredCapabilities dans BenchmarkRunner.vue
-REQUIRED_CAPABILITY = {"vision": "vision", "tool_calling": "tools"}
+REQUIRED_CAPABILITY = {"vision": "vision", "tool_calling": "tools", "thinking": "thinking"}
 
 def test_category(test: dict) -> str:
     return next((k for k, v in TESTS.items() if any(t["id"] == test["id"] for t in v)), "unknown")
@@ -389,6 +392,129 @@ def error_entry(test: dict, message: str, run: dict | None = None) -> dict:
         "response_preview": f"ERREUR: {message}",
         "options": dict(RUN_OPTIONS),
         "error": True,
+    }
+
+# ─── Tests « thinking » ──────────────────────────────────────────────────────
+# Problèmes à réponse unique (dénombrement, énigme à contraintes, trace de code, plus court chemin, calcul
+# de date), vérifiée EXACTEMENT, sans juge : le juge est un petit modèle sans réflexion, il se tromperait
+# sur ces problèmes. Chaque test est passé deux fois par le même modèle, réflexion activée puis coupée
+# (paramètre `think` d'Ollama) : la note vient du passage AVEC réflexion, la comparaison mesure ce que la
+# réflexion apporte et ce qu'elle coûte (tokens, secondes).
+
+# La réflexion compte dans la limite de tokens : 1024 (défaut) coupe la plupart des modèles en pleine
+# réflexion (qwen3.5:4b : 4 742 caractères de réflexion pour une énigme simple). Plafond seulement : un
+# modèle qui conclut plus tôt ne coûte rien de plus.
+THINKING_MIN_PREDICT = 8192
+# Le CONTEXTE doit aussi contenir prompt + réflexion + réponse. Mesuré le 18/11 : qwen3.5:4b avec
+# « contexte = valeur du modèle » (4096) s'arrêtait à prompt + réponse = 4096 tokens pile sur les 5 tests,
+# bien avant les 8192 de num_predict. On fixe donc le contexte, le même pour les deux passages (le changer
+# entre deux requêtes oblige Ollama à recharger le modèle).
+THINKING_MIN_CTX = THINKING_MIN_PREDICT + 1024
+
+def limit_reason(run: dict, options: dict) -> str:
+    """Pourquoi une génération s'est arrêtée sur `done_reason: length` : limite de tokens ou contexte plein."""
+    predict = options.get("num_predict")
+    if predict and run["tokens"] >= predict:
+        return f"limite « Tokens max » atteinte ({predict} tokens)"
+    used = (run["prompt_tokens"] or 0) + run["tokens"]
+    return f"contexte plein ({used} tokens, prompt + réponse)"
+
+def normalize_answer(text: str) -> str:
+    """« **D, B, F, C, A, E** » → « DBFCAE », « 2027-10-12 » → « 20271012 » : seuls lettres et chiffres comptent."""
+    return re.sub(r"[^0-9A-Za-z]", "", text).upper()
+
+def extract_answer(response: str) -> str | None:
+    """Réponse finale = DERNIÈRE ligne « ANSWER: … » (le modèle peut en écrire une provisoire avant de se corriger)."""
+    matches = re.findall(r"ANSWER\s*\**\s*:\s*\**\s*(.+)", response, flags=re.IGNORECASE)
+    return normalize_answer(matches[-1]) if matches else None
+
+def describe_pass(label: str, passed: dict) -> str:
+    if "error" in passed:
+        return f"{label} : {passed['error']}"
+    if passed["correct"]:
+        verdict = "juste"
+    elif passed.get("endless"):
+        verdict = "réflexion sans fin, pas de réponse"
+    else:
+        verdict = "faux" if passed["answer"] else "pas de ligne ANSWER"
+    return f"{label} : {verdict} ({passed['tokens']} tokens, {passed['elapsed_sec']:.0f} s)"
+
+def run_thinking_test(client: OllamaClient, model: str, test: dict) -> dict:
+    expected = [normalize_answer(a) for a in str(test.get("expected_answer", "")).split("|") if a.strip()]
+    think_options = {
+        **RUN_OPTIONS,
+        "num_predict": max(RUN_OPTIONS.get("num_predict") or 0, THINKING_MIN_PREDICT),
+        "num_ctx": max(RUN_OPTIONS.get("num_ctx") or 0, THINKING_MIN_CTX),
+    }
+    plain_options = {**RUN_OPTIONS, "num_ctx": think_options["num_ctx"]}
+
+    def one_pass(think: bool, options: dict) -> tuple[dict | None, dict]:
+        try:
+            run = run_prompt(client, model, test["prompt"], options=options, think=think)
+        except Exception as e:
+            return None, {"error": f"erreur ({e})"}
+        answer = extract_answer(run["response"])
+        endless = False
+        if answer is None and run["done_reason"] == "length":
+            predict = options.get("num_predict")
+            if not (predict and run["tokens"] >= predict):
+                # contexte plein : problème de réglage, pas du modèle → erreur relançable
+                return run, {"error": f"{limit_reason(run, options)} avant la réponse"}
+            # Limite « Tokens max » atteinte sans conclure : dans un test de réflexion, c'est un VRAI résultat
+            # (échec noté 1/5), pas une mesure manquante. Vu le 19/11 : qwen3.5:4b, 8192 tokens sur un calcul
+            # de date, 40 « Wait » dans sa réflexion et aucun calcul mené au bout.
+            endless = True
+        return run, {
+            "correct": answer is not None and answer in expected,
+            "answer": answer,
+            "endless": endless,
+            "tokens": run["tokens"],
+            "elapsed_sec": run["elapsed_sec"],
+            "thinking_chars": run["thinking_chars"],
+        }
+
+    run, with_think = one_pass(True, think_options)
+    if "error" in with_think:
+        # mesure impossible (plantage, contexte plein…) : test en erreur, relançable
+        return {**error_entry(test, f"Avec réflexion : {with_think['error']}", run), "options": think_options}
+
+    # sans réflexion : réglages normaux du run. Certains modèles ne savent pas couper leur réflexion →
+    # simple mention, la note n'en dépend pas
+    _, without_think = one_pass(False, plain_options)
+
+    score = 5 if with_think["correct"] else 1
+    parts = [describe_pass("Avec réflexion", with_think), describe_pass("Sans réflexion", without_think)]
+    if "error" not in without_think:
+        if with_think["correct"] and not without_think["correct"]:
+            parts.append("la réflexion fait la différence")
+        elif with_think["correct"] and without_think["correct"]:
+            parts.append(f"juste même sans réflexion, {with_think['tokens'] - without_think['tokens']} tokens de plus sans gain")
+        elif not with_think["correct"] and without_think["correct"]:
+            parts.append("la réflexion l'a induit en erreur")
+    if not with_think["correct"] and with_think["answer"]:
+        parts.append(f"répond {with_think['answer']}, attendu {expected[0] if expected else '?'}")
+
+    response = run["response"]
+    return {
+        "test_id": test["id"],
+        "label": test["label"],
+        "category": test_category(test),
+        "score": score,
+        "rule_score": score,
+        "judge_score": None,
+        "strengths": " ; ".join(parts) if with_think["correct"] else "",
+        "weaknesses": "" if with_think["correct"] else " ; ".join(parts),
+        "tokens": run["tokens"],
+        "tokens_per_sec": run["tokens_per_sec"],
+        "elapsed_sec": run["elapsed_sec"],
+        "ttft_sec": run["ttft_sec"],
+        "load_sec": run["load_sec"],
+        "prompt_eval_sec": run["prompt_eval_sec"],
+        "prompt_tokens": run["prompt_tokens"],
+        "response_preview": response[:300] + "..." if len(response) > 300 else response,
+        "options": think_options,
+        # détail des deux passages, pour un affichage dédié plus tard
+        "think_compare": {"with": with_think, "without": without_think},
     }
 
 def latency_summary(tests: list[dict]) -> tuple[float | None, float | None]:
@@ -477,12 +603,30 @@ def benchmark_model(
 
         expected_tool = test.get("expected_tool")
 
+        if test_category(test) == "thinking":
+            entry = run_thinking_test(client, model, test)
+            if not entry.get("error"):
+                total_tokens += entry["tokens"]
+                total_time += entry["elapsed_sec"]
+            if verbose:
+                print(f"{entry['score']}/5 — {entry['strengths'] or entry['weaknesses']}")
+            results.append(entry)
+            if stream_json:
+                emit_json({"event": "test_result", "model": model, **entry})
+            continue
+
         try:
             run = run_prompt(client, model, test["prompt"], tools=test.get("tools"), images=load_test_images(test))
         except Exception as e:
             if verbose:
                 print(f"ERREUR ({e})")
-            entry = error_entry(test, f"Erreur : {e}")
+            message = f"Erreur : {e}"
+            if "out of memory" in str(e).lower():
+                # vu le 17/11 sur les tests de vision : l'encodage de l'image demande de la mémoire GPU en plus
+                # du modèle déjà chargé, et llama-server plante
+                message += (" — mémoire GPU insuffisante (avec une image, l'encodeur vision en demande en plus du "
+                            "modèle) : décharger les autres modèles, ou réduire le contexte, puis relancer")
+            entry = error_entry(test, message)
             results.append(entry)
             if stream_json:
                 emit_json({"event": "test_result", "model": model, **entry})
@@ -496,8 +640,8 @@ def benchmark_model(
                 # Modèle à raisonnement coupé PENDANT sa réflexion : la limite de tokens compte aussi la
                 # réflexion (qwen3.5:4b : 4 742 caractères de réflexion, 0 de réponse, avec 1024 tokens max).
                 # Mesure invalide, pas un échec du modèle → erreur relançable avec une limite plus haute.
-                message = (f"Réflexion non terminée : limite de {RUN_OPTIONS.get('num_predict')} tokens atteinte "
-                           "avant la réponse — augmenter « Tokens max » pour les modèles à raisonnement")
+                message = (f"Réflexion non terminée : {limit_reason(run, RUN_OPTIONS)} avant la réponse — "
+                           "augmenter « Tokens max » (ou le contexte) pour les modèles à raisonnement")
                 entry = error_entry(test, message, run)
             else:
                 entry = {**error_entry(test, "Réponse vide", run), "error": False, "response_preview": ""}
@@ -568,12 +712,15 @@ def benchmark_model(
         if stream_json:
             emit_json({"event": "test_result", "model": model, **test_entry})
 
-    avg_score = round(sum(r["score"] for r in results) / len(results), 2) if results else 0
+    # Tests en erreur (plantage, réflexion coupée…) exclus de la moyenne : ce ne sont pas des mauvaises
+    # réponses mais des mesures manquantes, à relancer
+    scored = [r for r in results if not r.get("error")]
+    avg_score = round(sum(r["score"] for r in scored) / len(scored), 2) if scored else 0
     avg_tps = round(total_tokens / total_time, 1) if total_time > 0 else 0
     ttft_med, load_max = latency_summary(results)
 
     score_map = {5: "Excellent", 4: "Bon", 3: "Passable", 2: "Insuffisant", 1: "Inutilisable"}
-    verdict = score_map.get(round(avg_score), "Passable")
+    verdict = score_map.get(round(avg_score), "Passable") if scored else "En erreur"
 
     if stream_json:
         emit_json({

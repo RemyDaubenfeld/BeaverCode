@@ -105,7 +105,12 @@
 
       <label class="block text-xs text-bc-text-secondary mb-3">
         Réponse type attendue (optionnel)
-        <textarea v-model="form.expectedAnswer" rows="2" placeholder="Le juge compare la réponse du modèle à ceci, en plus des critères ci-dessus" class="mt-1 w-full px-3 py-2 rounded-bc bg-bc-surface-alt border border-bc-border text-sm text-bc-text-primary placeholder-bc-text-muted resize-y"></textarea>
+        <textarea
+          v-model="form.expectedAnswer"
+          rows="2"
+          :placeholder="form.category === 'thinking'
+            ? 'Réponse exacte, comparée à la ligne « ANSWER: » du modèle (lettres et chiffres seulement). Plusieurs réponses acceptées : séparer par |'
+            : 'Le juge compare la réponse du modèle à ceci, en plus des critères ci-dessus'" class="mt-1 w-full px-3 py-2 rounded-bc bg-bc-surface-alt border border-bc-border text-sm text-bc-text-primary placeholder-bc-text-muted resize-y"></textarea>
       </label>
 
       <template v-if="form.category === 'tool_calling'">

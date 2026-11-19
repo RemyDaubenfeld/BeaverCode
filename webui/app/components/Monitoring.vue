@@ -1,7 +1,11 @@
 <template>
 
-  <div class="relative flex items-center border-b-2 border-bc-border-strong bg-bc-surface px-4 py-2 text-sm text-bc-text-primary">
-    <div class="absolute left-4 flex items-center">
+  <!-- 3 colonnes : gauche | centre | droite. Les colonnes latérales (1fr) se partagent l'espace restant à parts
+       égales, donc le bloc central reste centré ; mais chacune garde au minimum la largeur de son contenu, donc
+       les blocs se poussent au lieu de se chevaucher quand la barre rétrécit (avant : gauche et droite en
+       `absolute`, ils passaient par-dessus CPU / RAM / GPU). -->
+  <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-6 border-b-2 border-bc-border-strong bg-bc-surface px-4 py-2 text-sm text-bc-text-primary whitespace-nowrap">
+    <div class="flex items-center justify-self-start">
       <button
         @click="showLoaded = true"
         class="rounded-bc px-2 py-1 text-sm font-mono text-bc-text-primary hover:bg-bc-surface-alt cursor-pointer"
@@ -24,12 +28,12 @@
         :class="benchmarkRunning ? 'text-bc-orange animate-pulse' : ''"
       >
         {{ benchmarkRunning
-          ? `Benchmark en cours… (${benchmarkGlobalProgressPercent}%)`
+          ? `Benchmark ${benchmarkGlobalProgressPercent} %`
           : 'Voir le dernier run' }}
       </button>
       <BenchmarkResultsModal v-if="showResultsModal" />
     </div>
-    <div class="mx-auto flex items-center gap-10 font-mono">
+    <div class="flex items-center gap-10 font-mono">
       <div class="flex items-center gap-1.5">
         <span>CPU : <span class="font-medium text-bc-text-primary">{{ cpuLoad ?? '—' }}%</span></span>
         <Sparkline :values="history.cpu" :capacity="HISTORY_SIZE" label="CPU" :color-class="loadClass(cpuLoad)" />
@@ -53,7 +57,7 @@
       </div>
     </div>
     <!-- état thermique / électrique du GPU, fixé à droite (symétrique du bloc de gauche) -->
-    <div class="absolute right-4 flex items-center gap-8 font-mono">
+    <div class="flex items-center justify-self-end gap-8 font-mono">
       <template v-for="gpu in gpus" :key="gpu.model">
         <div v-if="gpu.temperatureC != null" class="flex items-center gap-1.5">
           <!-- valeur en blanc comme le reste de la barre : seule la courbe porte la couleur du seuil -->

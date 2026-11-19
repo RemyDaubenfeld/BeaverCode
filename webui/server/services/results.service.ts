@@ -113,10 +113,16 @@ function latencySummary(tests: BenchmarkTestResult[]): { ttftSec: number | null;
   return { ttftSec: Math.round(median * 1000) / 1000, loadSec };
 }
 
+// runs antérieurs au champ `error` : l'erreur ne se voit qu'au « ERREUR » de response_preview
+const isErrorTest = (t: BenchmarkTestResult) => t.error ?? t.response_preview?.startsWith('ERREUR') ?? false;
+
 function mergeModelResult(existing: BenchmarkRunModelResult | undefined, incoming: BenchmarkRunModelResult): BenchmarkRunModelResult {
   const testsById = new Map<string, BenchmarkTestResult>();
-  for (const t of existing?.tests ?? []) testsById.set(t.test_id, t);
-  for (const t of incoming.tests) testsById.set(t.test_id, t);
+  // Les tests en erreur (plantage, réflexion coupée…) n'entrent pas au comparatif : ce sont des mesures
+  // manquantes, pas des 0/5. Ils restent dans le run, d'où on peut les relancer. Une erreur ne remplace
+  // donc jamais un résultat valide déjà présent.
+  for (const t of existing?.tests ?? []) if (!isErrorTest(t)) testsById.set(t.test_id, t);
+  for (const t of incoming.tests) if (!isErrorTest(t)) testsById.set(t.test_id, t);
   const tests = [...testsById.values()];
 
   const totalTests = tests.length;
@@ -152,7 +158,8 @@ async function rebuildLeaderboardFromRuns(): Promise<Record<string, BenchmarkRun
     const run = await readRunFile(filename);
     if (!run) continue;
     for (const modelResult of run.models) {
-      merged[modelResult.model] = mergeModelResult(merged[modelResult.model], modelResult);
+      const result = mergeModelResult(merged[modelResult.model], modelResult);
+      if (result.total_tests) merged[modelResult.model] = result; // que des erreurs : pas d'entrée vide
     }
   }
 
@@ -169,7 +176,8 @@ export async function syncLeaderboardFromRun(runId: string): Promise<void> {
 
   const leaderboard = await readLeaderboard();
   for (const modelResult of run.models) {
-    leaderboard[modelResult.model] = mergeModelResult(leaderboard[modelResult.model], modelResult);
+    const result = mergeModelResult(leaderboard[modelResult.model], modelResult);
+    if (result.total_tests) leaderboard[modelResult.model] = result; // que des erreurs : pas d'entrée vide
   }
   await writeLeaderboard(leaderboard);
 }

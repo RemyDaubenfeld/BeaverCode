@@ -17,6 +17,7 @@ import {
   PaintBrushIcon,
   PhotoIcon,
   QuestionMarkCircleIcon,
+  AcademicCapIcon,
 } from '@heroicons/vue/24/outline'
 
 // Métadonnées d'affichage des catégories de test du benchmark — partagées
@@ -40,6 +41,7 @@ export const categoryLabels = {
   code_style: 'Style de code',
   tool_calling: "Appel d'outils",
   vision: 'Vision',
+  thinking: 'Problèmes à réflexion',
 }
 
 // Capacité de modèle associée à chaque catégorie de test — mêmes 6 capacités
@@ -49,7 +51,9 @@ export const categoryLabels = {
 export const categoryCapability = {
   code: 'completion',
   chat: 'completion',
-  reasoning: 'thinking',
+  // énigmes et plans en texte normal, que tout modèle peut résoudre : classés en complétion pour que les
+  // modèles sans mode thinking soient comparables (le groupe « thinking » a ses propres tests, catégorie « thinking »)
+  reasoning: 'completion',
   instruction_following: 'completion',
   summarization: 'completion',
   structured_extraction: 'completion',
@@ -60,6 +64,7 @@ export const categoryCapability = {
   code_style: 'completion',
   tool_calling: 'tools',
   vision: 'vision',
+  thinking: 'thinking',
 }
 
 export const capabilityGroupLabels = {
@@ -99,6 +104,7 @@ export const knownCategories = [
   'code_style',
   'tool_calling',
   'vision',
+  'thinking',
 ]
 
 // Icône par catégorie de test — repérer le type de test en un coup d'œil
@@ -118,6 +124,7 @@ export const categoryIcons = {
   code_style: PaintBrushIcon,
   tool_calling: WrenchScrewdriverIcon,
   vision: PhotoIcon,
+  thinking: AcademicCapIcon,
 }
 export const defaultCategoryIcon = QuestionMarkCircleIcon
 
