@@ -22,7 +22,8 @@ from datetime import datetime
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from ollama_client import OllamaClient, encode_image_bytes
-from lib.config import DEFAULT_JUDGE, DEFAULT_HOST, DEFAULT_TEMPERATURE, DEFAULT_NUM_CTX, DEFAULT_NUM_PREDICT
+from lib.config import (DEFAULT_JUDGE, DEFAULT_HOST, DEFAULT_TEMPERATURE, DEFAULT_NUM_CTX, DEFAULT_NUM_PREDICT,
+                        DEFAULT_SEED, THINKING_TIME_LIMIT_SEC)
 from lib.tests_bank import TESTS
 
 # Dossier des images de test pour la catégorie "vision" — un test y référence
@@ -52,6 +53,7 @@ RUN_OPTIONS: dict = {
     "temperature": DEFAULT_TEMPERATURE,
     "num_ctx": DEFAULT_NUM_CTX,
     "num_predict": DEFAULT_NUM_PREDICT,
+    "seed": DEFAULT_SEED,
 }
 
 # Le JUGE garde des réglages fixes, indépendants des options du run : sa notation doit rester
@@ -59,7 +61,43 @@ RUN_OPTIONS: dict = {
 JUDGE_OPTIONS: dict = {
     "temperature": DEFAULT_TEMPERATURE,
     "num_ctx": DEFAULT_NUM_CTX,
+    "seed": 42,  # graine fixe : même réponse à juger → même note
 }
+
+# ─── Profil d'alimentation ───────────────────────────────────────────────────
+# Mesuré le 23/11 (qwen3-coder:30b-a3b, mêmes réglages) : 8,1 tok/s en profil `low-power`, 10,5 en
+# `performance`. Les vitesses de deux tests ne sont comparables qu'à profil égal : on l'enregistre avec
+# chaque test (le comparatif fusionne au niveau du test, une info seulement au niveau du run s'y perdrait).
+
+def power_state() -> dict:
+    """{"profile": "performance" | "balanced" | "low-power" | … | None, "on_ac": bool | None} (Linux, sysfs)."""
+    profile = None
+    try:
+        with open("/sys/firmware/acpi/platform_profile", encoding="utf-8") as f:
+            profile = f.read().strip() or None
+    except OSError:
+        pass
+    on_ac = None
+    try:
+        supplies = "/sys/class/power_supply"
+        for name in os.listdir(supplies):
+            try:
+                with open(os.path.join(supplies, name, "type"), encoding="utf-8") as f:
+                    if f.read().strip() != "Mains":
+                        continue
+                with open(os.path.join(supplies, name, "online"), encoding="utf-8") as f:
+                    on_ac = f.read().strip() == "1"
+                break
+            except OSError:
+                continue
+    except OSError:
+        pass
+    return {"profile": profile, "on_ac": on_ac}
+
+def with_power(entry: dict) -> dict:
+    """Ajoute à une entrée de résultat le profil d'alimentation au moment du test (avant son émission)."""
+    entry["power"] = power_state()
+    return entry
 
 # ─── Envoi d'un prompt ───────────────────────────────────────────────────────
 
@@ -74,8 +112,11 @@ def run_prompt(
     num_predict: int | None = None,
     options: dict | None = None,
     think: bool | None = None,
+    time_limit_sec: float | None = None,
 ) -> dict:
-    """`options` : options de génération (défaut : RUN_OPTIONS) ; `num_predict` les surcharge."""
+    """`options` : options de génération (défaut : RUN_OPTIONS) ; `num_predict` les surcharge.
+    `time_limit_sec` : durée max de génération, comptée à partir du premier morceau reçu (le chargement du
+    modèle et la lecture du prompt ne comptent pas). Dépassée → flux coupé, `done_reason: "time_limit"`."""
     messages = []
     if system:
         messages.append({"role": "system", "content": system})
@@ -92,22 +133,36 @@ def run_prompt(
     full_text_parts = []
     thinking_chars = 0
     final_chunk = None
+    tool_calls = []  # cumulés sur tout le flux, voir plus bas
     ttft = None  # temps jusqu'au PREMIER morceau de réponse (mesuré ici, côté client)
 
-    for chunk in client.chat(
+    timed_out = False
+    chunk_count = 0  # ≈ tokens générés (Ollama envoie un morceau par token) : seul compte disponible si on coupe
+    stream = client.chat(
         model=model,
         messages=messages,
         options=options,
         tools=tools,
         images=images,
         think=think,
-    ):
-        if ttft is None and not chunk.done:
-            ttft = time.time() - start
-        full_text_parts.append(chunk.content)
-        thinking_chars += len(chunk.thinking)
-        if chunk.done:
-            final_chunk = chunk
+    )
+    try:
+        for chunk in stream:
+            if ttft is None and not chunk.done:
+                ttft = time.time() - start
+            chunk_count += 1
+            full_text_parts.append(chunk.content)
+            thinking_chars += len(chunk.thinking)
+            tool_calls.extend(chunk.tool_calls)
+            if chunk.done:
+                final_chunk = chunk
+            elif time_limit_sec and ttft is not None and time.time() - start - ttft > time_limit_sec:
+                timed_out = True
+                break
+    finally:
+        # ferme la connexion HTTP tout de suite (sinon seulement au ramasse-miettes) : Ollama voit la
+        # requête annulée et arrête de générer
+        stream.close()
 
     elapsed = time.time() - start
     response_text = "".join(full_text_parts)
@@ -116,14 +171,19 @@ def run_prompt(
     # chunk (celui avec done=True) — voir la docstring de ChatChunk dans
     # ollama_client.py
     eval_count = final_chunk.eval_count if final_chunk and final_chunk.eval_count else 0
+    if timed_out:
+        eval_count = chunk_count  # pas de chunk final : estimation par le nombre de morceaux reçus
     if final_chunk and final_chunk.tokens_per_second:
         tokens_per_sec = round(final_chunk.tokens_per_second, 1)
+    elif timed_out and ttft is not None and elapsed > ttft:
+        tokens_per_sec = round(eval_count / (elapsed - ttft), 1)  # génération seule, comme Ollama
     else:
         tokens_per_sec = round(eval_count / elapsed, 1) if elapsed > 0 else 0
 
-    # tool_calls n'est présent que sur le chunk final (voir ChatChunk) — vide
-    # si le modèle n'a rien appelé, ou si aucun `tools` n'a été fourni
-    tool_calls = final_chunk.tool_calls if final_chunk else []
+    # tool_calls arrive sur le morceau qui contient l'appel, PAS sur le chunk final (done=True, vide) :
+    # vérifié le 23/11 avec qwen3:4b, appel au morceau 247 sur 248. Ne lire que le chunk final notait
+    # 1/5 (« aucun outil appelé ») des modèles qui appelaient correctement l'outil. Vide si le modèle
+    # n'a rien appelé, ou si aucun `tools` n'a été fourni.
 
     # durées renvoyées par Ollama sur le dernier chunk (nanosecondes → secondes)
     def seconds(ns: int | None) -> float | None:
@@ -144,7 +204,7 @@ def run_prompt(
         "prompt_tokens": final_chunk.prompt_eval_count if final_chunk else None,
         # pour diagnostiquer une réponse vide : le modèle a-t-il réfléchi, et s'est-il arrêté sur la limite ?
         "thinking_chars": thinking_chars,
-        "done_reason": final_chunk.done_reason if final_chunk else None,
+        "done_reason": "time_limit" if timed_out else (final_chunk.done_reason if final_chunk else None),
     }
 
 # ─── Images de test (catégorie "vision") ─────────────────────────────────────
@@ -345,7 +405,9 @@ def build_manifest(models: list[str] | None = None) -> dict:
             "temperature": DEFAULT_TEMPERATURE,
             "num_ctx": DEFAULT_NUM_CTX,
             "num_predict": DEFAULT_NUM_PREDICT,
+            "seed": DEFAULT_SEED,
         },
+        "thinking_time_limit_sec": THINKING_TIME_LIMIT_SEC,
     }
 
     if models:
@@ -433,6 +495,9 @@ def describe_pass(label: str, passed: dict) -> str:
         return f"{label} : {passed['error']}"
     if passed["correct"]:
         verdict = "juste"
+    elif passed.get("timed_out"):
+        limit = THINKING_TIME_LIMIT_SEC
+        verdict = f"plafond de {f'{limit // 60} min' if limit >= 60 and limit % 60 == 0 else f'{limit} s'} atteint, pas de réponse"
     elif passed.get("endless"):
         verdict = "réflexion sans fin, pas de réponse"
     else:
@@ -450,12 +515,19 @@ def run_thinking_test(client: OllamaClient, model: str, test: dict) -> dict:
 
     def one_pass(think: bool, options: dict) -> tuple[dict | None, dict]:
         try:
-            run = run_prompt(client, model, test["prompt"], options=options, think=think)
+            run = run_prompt(client, model, test["prompt"], options=options, think=think,
+                             time_limit_sec=THINKING_TIME_LIMIT_SEC)
         except Exception as e:
             return None, {"error": f"erreur ({e})"}
         answer = extract_answer(run["response"])
         endless = False
-        if answer is None and run["done_reason"] == "length":
+        timed_out = run["done_reason"] == "time_limit"
+        if timed_out:
+            # Plafond de durée atteint : même verdict qu'une limite de tokens atteinte, un vrai résultat
+            # (le modèle ne conclut pas en un temps raisonnable sur cette machine). Une ligne ANSWER déjà
+            # écrite avant la coupure compte quand même.
+            endless = answer is None
+        elif answer is None and run["done_reason"] == "length":
             predict = options.get("num_predict")
             if not (predict and run["tokens"] >= predict):
                 # contexte plein : problème de réglage, pas du modèle → erreur relançable
@@ -468,6 +540,7 @@ def run_thinking_test(client: OllamaClient, model: str, test: dict) -> dict:
             "correct": answer is not None and answer in expected,
             "answer": answer,
             "endless": endless,
+            "timed_out": timed_out,
             "tokens": run["tokens"],
             "elapsed_sec": run["elapsed_sec"],
             "thinking_chars": run["thinking_chars"],
@@ -514,7 +587,7 @@ def run_thinking_test(client: OllamaClient, model: str, test: dict) -> dict:
         "response_preview": response[:300] + "..." if len(response) > 300 else response,
         "options": think_options,
         # détail des deux passages, pour un affichage dédié plus tard
-        "think_compare": {"with": with_think, "without": without_think},
+        "think_compare": {"with": with_think, "without": without_think, "time_limit_sec": THINKING_TIME_LIMIT_SEC},
     }
 
 def latency_summary(tests: list[dict]) -> tuple[float | None, float | None]:
@@ -610,7 +683,7 @@ def benchmark_model(
                 total_time += entry["elapsed_sec"]
             if verbose:
                 print(f"{entry['score']}/5 — {entry['strengths'] or entry['weaknesses']}")
-            results.append(entry)
+            results.append(with_power(entry))
             if stream_json:
                 emit_json({"event": "test_result", "model": model, **entry})
             continue
@@ -627,7 +700,7 @@ def benchmark_model(
                 message += (" — mémoire GPU insuffisante (avec une image, l'encodeur vision en demande en plus du "
                             "modèle) : décharger les autres modèles, ou réduire le contexte, puis relancer")
             entry = error_entry(test, message)
-            results.append(entry)
+            results.append(with_power(entry))
             if stream_json:
                 emit_json({"event": "test_result", "model": model, **entry})
             continue
@@ -647,7 +720,7 @@ def benchmark_model(
                 entry = {**error_entry(test, "Réponse vide", run), "error": False, "response_preview": ""}
             if verbose:
                 print(entry["weaknesses"])
-            results.append(entry)
+            results.append(with_power(entry))
             if stream_json:
                 emit_json({"event": "test_result", "model": model, **entry})
             continue
@@ -708,7 +781,7 @@ def benchmark_model(
             # tests de runs différents, chaque test doit donc porter les siens
             "options": dict(RUN_OPTIONS),
         }
-        results.append(test_entry)
+        results.append(with_power(test_entry))
         if stream_json:
             emit_json({"event": "test_result", "model": model, **test_entry})
 
@@ -763,6 +836,7 @@ def save_results(all_results: list[dict], output_path: str = "benchmark_results.
             "generated_at": datetime.now().isoformat(),
             "ollama_host": OllamaClient().base_url,
             "options": RUN_OPTIONS,
+            "power": power_state(),  # au moment de l'enregistrement ; le détail est dans chaque test
             "models": all_results
         }, f, ensure_ascii=False, indent=2)
     if not quiet:
@@ -809,11 +883,13 @@ Exemples :
     parser.add_argument("--num-ctx", type=option_value(int), default=DEFAULT_NUM_CTX,
                         help=f"Taille du contexte, ou « model » (défaut : {DEFAULT_NUM_CTX})")
     parser.add_argument("--plan", help='Tests par modèle en JSON, ex. \'{"qwen3:8b": ["code_fizzbuzz"], "gemma4:12b": ["chat_explain"]}\' (remplace --models/--tests)')
+    parser.add_argument("--seed", type=option_value(int), default=DEFAULT_SEED,
+                        help=f"Graine du tirage aléatoire des modèles testés, ou « model » = aléatoire (défaut : {DEFAULT_SEED})")
     parser.add_argument("--num-predict", type=int, default=DEFAULT_NUM_PREDICT,
                         help=f"Nombre max de tokens générés par réponse (défaut : {DEFAULT_NUM_PREDICT})")
 
     args = parser.parse_args()
-    RUN_OPTIONS.update(temperature=args.temperature, num_ctx=args.num_ctx, num_predict=args.num_predict)
+    RUN_OPTIONS.update(temperature=args.temperature, num_ctx=args.num_ctx, num_predict=args.num_predict, seed=args.seed)
 
     if args.manifest:
         print(json.dumps(build_manifest(args.models), ensure_ascii=False))

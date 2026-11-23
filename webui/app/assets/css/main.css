@@ -49,6 +49,11 @@
   --shadow-bc-hard-sm: 2px 2px 0 var(--color-bc-ink);
 }
 
+/* interface sombre : barres de défilement, listes déroulantes et autres contrôles natifs du navigateur en sombre */
+:root {
+  color-scheme: dark;
+}
+
 body {
   background: var(--color-bc-bg);
   color: var(--color-bc-text-primary);

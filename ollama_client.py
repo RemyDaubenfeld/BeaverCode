@@ -115,7 +115,7 @@ class ChatChunk:
     # Modèles à raisonnement : leur réflexion arrive à part (message.thinking), AVANT la réponse
     thinking: str = ""
     done_reason: str | None = None  # dernier chunk : "stop" (fin normale) ou "length" (limite num_predict atteinte)
-    tool_calls: list[dict[str, Any]] = field(default_factory=list)  # appels d'outils demandés par le modèle (mode chat_tools), présents sur le chunk qui les contient
+    tool_calls: list[dict[str, Any]] = field(default_factory=list)  # appels d'outils demandés par le modèle : sur le morceau qui les contient, AVANT le chunk final (vide) — à cumuler sur tout le flux
 
     @property
     def tokens_per_second(self) -> float | None:

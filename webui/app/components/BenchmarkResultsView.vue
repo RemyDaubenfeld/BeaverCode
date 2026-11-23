@@ -86,8 +86,9 @@
         </p>
         <p class="mb-2 text-bc-text-secondary">
           Estimation : durée moyenne des tests déjà passés par le modèle (même catégorie si possible), hors temps du juge.
-          Les tests de réflexion imposent leurs propres limites (8192 tokens, contexte 9216).
+          Les tests de réflexion imposent leurs propres limites (8192 tokens, contexte 9216, {{ thinkingLimitText }} par passage).
         </p>
+        <BenchmarkPowerWarning class="mb-2" />
         <div class="flex justify-end gap-2">
           <button @click="completing = null" class="px-2.5 py-1 rounded-bc border-2 border-bc-border text-bc-text-secondary hover:bg-bc-surface-alt cursor-pointer">Annuler</button>
           <button
@@ -243,6 +244,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { EyeIcon, TrashIcon, ListBulletIcon, MagnifyingGlassIcon, PlusCircleIcon } from '@heroicons/vue/24/outline'
 import BenchmarkRunViewModal from './BenchmarkRunViewModal.vue'
 import BenchmarkModelTestsModal from './BenchmarkModelTestsModal.vue'
+import BenchmarkPowerWarning from './BenchmarkPowerWarning.vue'
 
 const { scoreColorClass, formatDuration, formatRunOptions } = useBenchmarkFormat()
 const { categoryCapability, capabilityGroupLabels, capabilityOrder, capabilityGroupIcons, defaultCategoryIcon, requiredCapabilities } = useTestCategories()
@@ -309,6 +311,11 @@ watch(running, (now, before) => {
 // réelles, même règle que l'onglet Tests) mais qui n'y figurent pas. Les tests en erreur, exclus du comparatif,
 // en font donc partie, comme les tests ajoutés à la banque depuis son dernier run.
 const manifest = ref(null)
+// plafond de durée d'un passage de test « thinking » (THINKING_TIME_LIMIT_SEC, lib/config.py)
+const thinkingLimitText = computed(() => {
+  const s = manifest.value?.thinking_time_limit_sec
+  return s ? `${Math.round(s / 60)} min` : '5 min'
+})
 
 async function loadManifest() {
   try {

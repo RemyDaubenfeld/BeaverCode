@@ -30,13 +30,33 @@ export function formatDuration(seconds) {
   return `${hours}h ${String(minutes).padStart(2, '0')}m`
 }
 
+// Profil d'alimentation enregistré avec un test (power_state() dans benchmark.py) : il change les vitesses
+// (mesuré le 23/11 : 8,1 tok/s en low-power, 10,5 en performance). Absent = test antérieur au 23/11.
+export function formatPower(power) {
+  if (!power || (power.profile == null && power.on_ac == null)) return 'alimentation non enregistrée (test antérieur)'
+  const source = power.on_ac == null ? '' : power.on_ac ? ', secteur' : ', batterie'
+  return `alimentation ${power.profile ?? 'profil inconnu'}${source}`
+}
+
+// Vitesse mesurée hors conditions de référence (performance sur secteur) : à ne pas comparer telle quelle
+export function slowPower(power) {
+  return !!power && ((power.profile != null && power.profile !== 'performance') || power.on_ac === false)
+}
+
+export function speedTooltip(test) {
+  const warn = slowPower(test.power) ? '\nMesurée hors mode performance sur secteur : vitesse plus basse, pas comparable.' : ''
+  return `Réglages : ${formatRunOptions(test.options)}\n${formatPower(test.power)}${warn}`
+}
+
 // Réglages de génération d'un run / d'un test (voir RUN_OPTIONS dans benchmark.py) → texte court.
 // null = « valeur du modèle » ; options absentes = run antérieur à l'enregistrement des réglages.
 export function formatRunOptions(options) {
   if (!options) return 'réglages non enregistrés (run antérieur)'
   const temp = options.temperature == null ? 'du modèle' : options.temperature
   const ctx = options.num_ctx == null ? 'du modèle' : options.num_ctx
-  return `température ${temp} · contexte ${ctx} · ${options.num_predict} tokens max`
+  // seed absente = run antérieur à son ajout (23/11) : tirage aléatoire à l'époque
+  const seed = options.seed == null ? 'aléatoire' : options.seed
+  return `température ${temp} · contexte ${ctx} · ${options.num_predict} tokens max · seed ${seed}`
 }
 
 // Latence d'un modèle sur ses tests : (TTFT « à chaud », temps de chargement), en secondes.
@@ -84,5 +104,5 @@ export function formatLatency(tests) {
 }
 
 export function useBenchmarkFormat() {
-  return { scoreColorClass, formatDuration, formatRunOptions, formatSeconds, ttftTooltip, formatLatency }
+  return { scoreColorClass, formatDuration, formatRunOptions, formatSeconds, ttftTooltip, formatLatency, formatPower, slowPower, speedTooltip }
 }

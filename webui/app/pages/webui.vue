@@ -58,12 +58,15 @@
             :key="i"
             :message="message"
             :live="streaming && i === conversation.messages.length - 1"
+            :has-raw="!!rawExchange(message)"
+            @raw="rawMessage = message"
           />
         </div>
       </div>
 
       <div class="border-t border-bc-border px-4 py-3">
         <p v-if="errorMessage" class="mx-auto mb-2 max-w-3xl text-sm text-bc-danger">{{ errorMessage }}</p>
+        <ChatContextGauge class="mx-auto mb-2 max-w-3xl" :conversation="conversation" :draft="draft" :num-ctx="effectiveContext" />
         <div class="mx-auto flex max-w-3xl items-end gap-2">
           <textarea
             ref="input"
@@ -75,6 +78,17 @@
             @input="autoGrow"
             class="max-h-48 min-h-[2.5rem] flex-1 resize-none rounded-bc border-2 border-bc-border-strong bg-bc-surface-alt px-3 py-2 text-sm text-bc-text-primary placeholder:text-bc-text-muted focus:border-bc-orange focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
           />
+          <button
+            v-if="canContinue"
+            type="button"
+            @click="continueReply({ think: thinkParam })"
+            :disabled="!!settingsError"
+            title="Prolonger la dernière réponse là où elle s'est arrêtée"
+            class="flex h-10 shrink-0 items-center gap-1.5 rounded-bc border-2 border-bc-border-strong bg-bc-surface px-3 text-sm font-semibold text-bc-orange-light shadow-bc-hard-sm transition-transform duration-75 hover:bg-bc-surface-alt active:translate-x-0.5 active:translate-y-0.5 active:shadow-none disabled:border-bc-border disabled:bg-bc-surface-alt disabled:text-bc-text-muted disabled:shadow-none disabled:cursor-not-allowed cursor-pointer"
+          >
+            <ForwardIcon class="h-4 w-4" />
+            Continuer
+          </button>
           <button
             v-if="canRegenerate"
             type="button"
@@ -114,17 +128,26 @@
       class="w-72 shrink-0 overflow-y-auto rounded-bc border-2 border-bc-border-strong bg-bc-surface p-4 shadow-bc-hard"
       :conversation="conversation"
       :disabled="streaming"
+      :model-context="modelInfo?.context?.configured ?? null"
+      :model-parameters="modelInfo?.parameters ?? []"
+    />
+
+    <ChatRawModal
+      v-if="rawMessage && rawExchange(rawMessage)"
+      :exchange="rawExchange(rawMessage)"
+      :template="modelInfo?.template ?? null"
+      @close="rawMessage = null"
     />
   </div>
 </template>
 
 <script setup>
 import { ref, computed, watch, nextTick, onMounted } from 'vue'
-import { AdjustmentsHorizontalIcon, ArrowPathIcon, ChatBubbleLeftRightIcon, PencilSquareIcon } from '@heroicons/vue/24/outline'
+import { AdjustmentsHorizontalIcon, ArrowPathIcon, ChatBubbleLeftRightIcon, PencilSquareIcon, ForwardIcon } from '@heroicons/vue/24/outline'
 
 const {
-  conversations, conversation, streaming, errorMessage, canRegenerate,
-  newConversation, loadConversations, openConversation, deleteConversation, renameConversation, send, regenerate, stop,
+  conversations, conversation, streaming, errorMessage, canRegenerate, canContinue, rawExchange,
+  newConversation, loadConversations, openConversation, deleteConversation, renameConversation, send, regenerate, continueReply, stop,
 } = useChat()
 const { modelName, modelList } = useModels()
 
@@ -153,6 +176,23 @@ const canThinkModel = computed(() =>
 )
 // true/false pour un modèle à réflexion ; null sinon (paramètre non envoyé : Ollama refuse `think` pour un modèle qui n'a pas la capacité)
 const thinkParam = computed(() => (canThinkModel.value ? conversation.value.think : null))
+
+// Fiche du modèle choisi (/api/model/show) : contexte appliqué en « valeur du modèle » (jauge de contexte)
+// et template (requête brute). Rechargée à chaque changement de modèle.
+const modelInfo = ref(null)
+watch(() => conversation.value?.model, async (name) => {
+  modelInfo.value = null
+  if (!name) return
+  try {
+    const info = await $fetch('/api/model/show', { query: { name } })
+    if (conversation.value?.model === name) modelInfo.value = info // le modèle a pu changer entre-temps
+  } catch {
+    // modèle supprimé ou Ollama injoignable : pas de jauge, le chat reste utilisable
+  }
+}, { immediate: true })
+const effectiveContext = computed(() => conversation.value?.options.num_ctx ?? modelInfo.value?.context?.configured ?? null)
+
+const rawMessage = ref(null) // réponse dont la requête brute est affichée
 
 const settingsError = computed(() => settings.value?.optionsError ?? '')
 const canSend = computed(() => !!conversation.value?.model && !!draft.value.trim() && !settingsError.value && !streaming.value)

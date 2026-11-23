@@ -27,7 +27,7 @@ L'outil de benchmark se lance directement, pas via npm :
 python benchmark_tool/benchmark.py --models qwen2.5-coder:7b gemma3:4b
 python benchmark_tool/benchmark.py --list-models
 python benchmark_tool/benchmark.py --manifest        # manifest JSON des tests disponibles, utilisé par la WebUI
-python benchmark_tool/benchmark.py --models qwen3:8b --temperature 0.7 --num-ctx model --num-predict 2048  # options de génération (« model » = réglage du modelfile)
+python benchmark_tool/benchmark.py --models qwen3:8b --temperature 0.7 --num-ctx model --num-predict 2048 --seed 42  # options de génération (« model » = réglage du modelfile ; pour --seed : aléatoire)
 python benchmark_tool/benchmark.py --plan '{"qwen3:8b": ["chat_explain"], "gemma4:12b": ["code_fizzbuzz"]}'  # tests propres à chaque modèle (relance des tests ratés)
 ```
 
@@ -71,8 +71,9 @@ Le travail UI doit suivre la charte graphique BeaverCode (palette sombre et chau
 ### Outil de benchmark (`benchmark_tool/`, Python, suivi par git sauf `results/` et `leaderboard*.json`)
 
 - `benchmark.py` — point d'entrée CLI et logique de scoring (règles + juge LLM optionnel via `benchmark-judge:latest`, surchargeable avec `BENCHMARK_JUDGE`)
-- `lib/config.py` — réglages par défaut surchargeables par variable d'env (`OLLAMA_BASE_URL`, `BENCHMARK_TEMPERATURE`, `BENCHMARK_NUM_CTX`, `BENCHMARK_NUM_PREDICT`) ; les trois options de génération sont aussi surchargeables en CLI (`--temperature`, `--num-ctx`, `--num-predict`, passés par la WebUI) et enregistrées avec chaque résultat (`options` du run, du modèle et de chaque test). Le juge garde des réglages fixes (`JUDGE_OPTIONS`)
-- `lib/tests_bank.py` — charge `lib/tests_bank.json`, les cas de test par catégorie (code, chat, reasoning, security, code_style, tool_calling, vision, thinking…), aussi édités depuis la WebUI (« Gérer les tests »). Les tests `thinking` (modèles ayant la capacité) sont vérifiés exactement sur la ligne `ANSWER:` (`expected_answer`, sans juge) et passés deux fois, réflexion activée puis coupée (`think` d'Ollama, `run_thinking_test()`)
+- `lib/config.py` — réglages par défaut surchargeables par variable d'env (`OLLAMA_BASE_URL`, `BENCHMARK_TEMPERATURE`, `BENCHMARK_NUM_CTX`, `BENCHMARK_NUM_PREDICT`, `BENCHMARK_SEED`, `BENCHMARK_THINKING_TIME_LIMIT`) ; les quatre options de génération sont aussi surchargeables en CLI (`--temperature`, `--num-ctx`, `--num-predict`, `--seed`, passés par la WebUI) et enregistrées avec chaque résultat (`options` du run, du modèle et de chaque test). Le juge garde des réglages fixes (`JUDGE_OPTIONS`). Chaque test enregistre aussi le profil d'alimentation (`power`, `power_state()`) : les tok/s ne se comparent qu'à profil égal (~25 % de moins en `low-power`)
+- **`tool_calls` arrive sur le morceau du flux qui contient l'appel, pas sur le chunk final** (vide) : toujours les cumuler sur tout le flux (`run_prompt()`)
+- `lib/tests_bank.py` — charge `lib/tests_bank.json`, les cas de test par catégorie (code, chat, reasoning, security, code_style, tool_calling, vision, thinking…), aussi édités depuis la WebUI (« Gérer les tests »). Les tests `thinking` (modèles ayant la capacité) sont vérifiés exactement sur la ligne `ANSWER:` (`expected_answer`, sans juge) et passés deux fois, réflexion activée puis coupée (`think` d'Ollama, `run_thinking_test()`), chaque passage plafonné à 5 min après le premier token (`time_limit_sec` de `run_prompt()`)
 - `lib/metrics.py`, `lib/exports.py` — scoring/métriques et export des résultats
 - Le modèle juge doit être texte seul — un juge multimodal (ex. basé sur `gemma4:e4b`) plante lors de l'offload CPU du projecteur vision (bug connu llama.cpp/Ollama).
 

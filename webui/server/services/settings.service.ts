@@ -21,6 +21,7 @@ export interface BenchmarkOptionsSetting {
   temperature: number | null // null = valeur du modèle
   num_ctx: number | null
   num_predict: number
+  seed?: number | null // null = aléatoire ; absente = défaut de lib/config.py
 }
 
 export interface WebUiSettings {
@@ -92,7 +93,9 @@ export function validateSettings(body: unknown): WebUiSettings {
     if (o.temperature !== null && !inRange(o.temperature, 0, 2)) fail('Température invalide (0 à 2, ou valeur du modèle)');
     if (o.num_ctx !== null && !(inRange(o.num_ctx, 512, 262144) && Number.isInteger(o.num_ctx))) fail('Contexte invalide (512 à 262144, ou valeur du modèle)');
     if (!(inRange(o.num_predict, 16, 32768) && Number.isInteger(o.num_predict))) fail('Tokens max invalides (16 à 32768)');
-    options = { temperature: o.temperature as number | null, num_ctx: o.num_ctx as number | null, num_predict: o.num_predict as number };
+    if (o.seed !== undefined && o.seed !== null && !(inRange(o.seed, 0, 2147483647) && Number.isInteger(o.seed))) fail('Seed invalide (entier de 0 à 2147483647, ou aléatoire)');
+    options = { temperature: o.temperature as number | null, num_ctx: o.num_ctx as number | null, num_predict: o.num_predict as number,
+      ...(o.seed !== undefined ? { seed: o.seed as number | null } : {}) };
   }
 
   return { ollama_url: ollamaUrl, default_judge: judge, benchmark_options: options };

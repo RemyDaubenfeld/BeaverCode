@@ -15,11 +15,24 @@ import { getOllamaUrl } from './settings.service';
 
 const CONVERSATIONS_DIR = fileURLToPath(new URL('../../.data/conversations/', import.meta.url));
 
+// Réglages d'une conversation. Chaque valeur à null = valeur du modèle (modelfile) ou du serveur Ollama.
+// Les neuf premiers partent dans `options` de la requête Ollama ; keep_alive et format sont des paramètres
+// à part de la requête (voir buildOllamaPayload), rangés ici pour être validés et enregistrés au même endroit.
 export interface ChatOptions {
-  temperature: number | null // null = valeur du modèle (modelfile)
+  temperature: number | null
   num_ctx: number | null
   num_predict: number | null
+  top_p: number | null
+  top_k: number | null
+  min_p: number | null
+  repeat_penalty: number | null
+  seed: number | null
+  stop: string[] | null // séquences d'arrêt : la génération s'arrête dès que l'une apparaît
+  keep_alive: string | null // durée de maintien en mémoire après la réponse : « 30m », « 1h », « -1 » (toujours)
+  format: 'json' | Record<string, unknown> | null // sortie structurée : JSON libre, ou conforme à un schéma JSON
 }
+
+const OLLAMA_OPTION_KEYS = ['temperature', 'num_ctx', 'num_predict', 'top_p', 'top_k', 'min_p', 'repeat_penalty', 'seed', 'stop'] as const;
 
 export interface ChatMessage {
   role: 'user' | 'assistant'
@@ -48,6 +61,7 @@ export interface ChatRequest {
   system: string
   options: ChatOptions
   think: boolean | null // null = modèle sans capacité thinking : paramètre non envoyé
+  continue: boolean // « Continuer » : le dernier message est une réponse inachevée du modèle, qu'Ollama prolonge
 }
 
 const fail = (message: string) => {
@@ -55,17 +69,39 @@ const fail = (message: string) => {
 };
 const isNum = (v: unknown, min: number, max: number) => typeof v === 'number' && Number.isFinite(v) && v >= min && v <= max;
 
-// Mêmes bornes que les réglages du benchmark ; null = valeur du modèle pour chacun
+// Bornes : celles des réglages du benchmark pour les trois premiers, plages utiles d'Ollama pour les autres
 export function validateChatOptions(o: unknown): ChatOptions {
-  if (o == null) return { temperature: null, num_ctx: null, num_predict: null };
-  const v = o as Record<string, unknown>;
-  if (v.temperature != null && !isNum(v.temperature, 0, 2)) fail('Température invalide (0 à 2, ou valeur du modèle)');
-  if (v.num_ctx != null && !(isNum(v.num_ctx, 512, 262144) && Number.isInteger(v.num_ctx))) fail('Contexte invalide (512 à 262144, ou valeur du modèle)');
-  if (v.num_predict != null && !(isNum(v.num_predict, 16, 32768) && Number.isInteger(v.num_predict))) fail('Tokens max invalides (16 à 32768, ou valeur du modèle)');
+  const v = (o ?? {}) as Record<string, unknown>;
+  const int = (x: unknown, min: number, max: number) => isNum(x, min, max) && Number.isInteger(x);
+  const check = (key: string, ok: (x: unknown) => boolean, message: string) => {
+    if (v[key] != null && !ok(v[key])) fail(`${message}, ou valeur du modèle`);
+  };
+  check('temperature', (x) => isNum(x, 0, 2), 'Température invalide (0 à 2)');
+  check('num_ctx', (x) => int(x, 512, 262144), 'Contexte invalide (512 à 262144)');
+  check('num_predict', (x) => int(x, 16, 32768), 'Tokens max invalides (16 à 32768)');
+  check('top_p', (x) => isNum(x, 0, 1), 'top_p invalide (0 à 1)');
+  check('top_k', (x) => int(x, 1, 1000), 'top_k invalide (1 à 1000)');
+  check('min_p', (x) => isNum(x, 0, 1), 'min_p invalide (0 à 1)');
+  check('repeat_penalty', (x) => isNum(x, 0, 5), 'repeat_penalty invalide (0 à 5)');
+  check('seed', (x) => int(x, 0, 2147483647), 'Seed invalide (entier de 0 à 2147483647)');
+  check('stop', (x) => Array.isArray(x) && x.length > 0 && x.length <= 8 && x.every((s) => typeof s === 'string' && s.length > 0 && s.length <= 100),
+    'Séquences d\'arrêt invalides (1 à 8, de 100 caractères max)');
+  // « 30m », « 1h », « 90s », « -1 » (toujours), « 0 » (décharger tout de suite)
+  check('keep_alive', (x) => typeof x === 'string' && /^(-1|0|\d{1,5}[smh])$/.test(x), 'keep_alive invalide (ex. 30m, 1h, -1)');
+  check('format', (x) => x === 'json' || (typeof x === 'object' && !Array.isArray(x) && JSON.stringify(x).length <= 20000),
+    'Format invalide (json, ou un schéma JSON)');
   return {
     temperature: (v.temperature ?? null) as number | null,
     num_ctx: (v.num_ctx ?? null) as number | null,
     num_predict: (v.num_predict ?? null) as number | null,
+    top_p: (v.top_p ?? null) as number | null,
+    top_k: (v.top_k ?? null) as number | null,
+    min_p: (v.min_p ?? null) as number | null,
+    repeat_penalty: (v.repeat_penalty ?? null) as number | null,
+    seed: (v.seed ?? null) as number | null,
+    stop: (v.stop ?? null) as string[] | null,
+    keep_alive: (v.keep_alive ?? null) as string | null,
+    format: (v.format ?? null) as ChatOptions['format'],
   };
 }
 
@@ -81,7 +117,11 @@ export function validateChatRequest(body: unknown): ChatRequest {
     if (typeof msg.content !== 'string') fail('Contenu de message invalide');
     return { role: msg.role as 'user' | 'assistant', content: msg.content as string };
   });
-  if (messages[messages.length - 1]!.role !== 'user') fail('Le dernier message doit venir de l\'utilisateur');
+  const continuing = b.continue === true;
+  // une requête normale se termine par le message de l'utilisateur ; « Continuer », par la réponse à prolonger
+  if (messages[messages.length - 1]!.role !== (continuing ? 'assistant' : 'user')) {
+    fail(continuing ? 'Rien à continuer : le dernier message n\'est pas une réponse du modèle' : 'Le dernier message doit venir de l\'utilisateur');
+  }
   if (b.system != null && typeof b.system !== 'string') fail('Prompt système invalide');
   if (b.think != null && typeof b.think !== 'boolean') fail('Paramètre de réflexion invalide');
   return {
@@ -90,16 +130,26 @@ export function validateChatRequest(body: unknown): ChatRequest {
     system: ((b.system as string | undefined) ?? '').trim(),
     options: validateChatOptions(b.options),
     think: (b.think ?? null) as boolean | null,
+    continue: continuing,
   };
 }
 
-/** Requête de chat en streaming vers Ollama ; `signal` coupe la génération (bouton Arrêter). */
-export function chatStream(req: ChatRequest, signal: AbortSignal): Promise<Response> {
+/** Corps exact de la requête envoyée à Ollama (aussi renvoyé au navigateur pour la vue « requête brute »). */
+export function buildOllamaPayload(req: ChatRequest): Record<string, unknown> {
   // seules les options fixées partent : les autres gardent la valeur du modelfile
-  const options = Object.fromEntries(Object.entries(req.options).filter(([, v]) => v !== null));
+  const options = Object.fromEntries(
+    OLLAMA_OPTION_KEYS.filter((k) => req.options[k] !== null).map((k) => [k, req.options[k]]),
+  );
   const messages = req.system ? [{ role: 'system', content: req.system }, ...req.messages] : req.messages;
   const payload: Record<string, unknown> = { model: req.model, messages, stream: true, options };
   if (req.think !== null) payload.think = req.think;
+  if (req.options.keep_alive !== null) payload.keep_alive = req.options.keep_alive;
+  if (req.options.format !== null) payload.format = req.options.format;
+  return payload;
+}
+
+/** Requête de chat en streaming vers Ollama ; `signal` coupe la génération (bouton Arrêter). */
+export function chatStream(payload: Record<string, unknown>, signal: AbortSignal): Promise<Response> {
   return fetch(getOllamaUrl('/api/chat'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

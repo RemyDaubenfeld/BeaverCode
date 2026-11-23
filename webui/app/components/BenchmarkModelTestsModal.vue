@@ -15,7 +15,7 @@
             <td class="py-1.5 pr-3 whitespace-nowrap font-mono" :class="scoreColorClass(test.score)">
               {{ '★'.repeat(test.score) }}{{ '☆'.repeat(5 - test.score) }}
             </td>
-            <td class="py-1.5 pr-3 text-bc-text-secondary font-mono whitespace-nowrap" :title="`Réglages : ${formatRunOptions(test.options)}`">{{ test.tokens_per_sec }} tok/s</td>
+            <td class="py-1.5 pr-3 font-mono whitespace-nowrap" :class="slowPower(test.power) ? 'text-bc-warning' : 'text-bc-text-secondary'" :title="speedTooltip(test)">{{ test.tokens_per_sec }} tok/s</td>
             <td class="py-1.5 pr-3 text-bc-text-secondary font-mono whitespace-nowrap" :title="ttftTooltip(test)">TTFT {{ formatSeconds(test.ttft_sec) }}</td>
             <td class="py-1.5 pr-3 text-bc-text-secondary font-mono whitespace-nowrap">{{ formatDuration(test.elapsed_sec) }}</td>
             <td class="py-1.5 text-bc-text-secondary max-w-md truncate" :title="test.weaknesses">{{ test.weaknesses }}</td>
@@ -38,5 +38,5 @@ defineProps({
 })
 const emit = defineEmits(['close'])
 
-const { scoreColorClass, formatDuration, formatRunOptions, formatSeconds, ttftTooltip, formatLatency } = useBenchmarkFormat()
+const { scoreColorClass, formatDuration, formatRunOptions, formatSeconds, ttftTooltip, formatLatency, slowPower, speedTooltip } = useBenchmarkFormat()
 </script>

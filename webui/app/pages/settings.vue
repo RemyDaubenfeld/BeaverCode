@@ -91,6 +91,18 @@
               <input id="set-num-predict" v-model.number="form.benchmark_options.num_predict" type="number" min="128" max="32768" step="128"
                 class="w-24 px-2 py-1 text-sm rounded-bc bg-bc-surface-alt border border-bc-border font-mono text-bc-text-primary" />
             </div>
+            <div>
+              <label class="block text-xs text-bc-text-secondary mb-1" for="set-seed"
+                title="Graine du tirage aléatoire : à seed et réglages égaux, un modèle redonne la même réponse, donc deux runs sont comparables">Seed</label>
+              <div class="flex items-center gap-2">
+                <input id="set-seed" v-model.number="form.benchmark_options.seed" type="number" min="0" max="2147483647" step="1"
+                  :disabled="modelValue.seed"
+                  class="w-24 px-2 py-1 text-sm rounded-bc bg-bc-surface-alt border border-bc-border font-mono text-bc-text-primary disabled:opacity-40" />
+                <label class="flex items-center gap-1.5 text-xs text-bc-text-secondary cursor-pointer select-none">
+                  <input v-model="modelValue.seed" type="checkbox" class="accent-bc-orange" /> aléatoire
+                </label>
+              </div>
+            </div>
           </div>
           <p v-if="customOptions" class="mt-1 text-xs text-bc-text-secondary">
             Préremplissent la section « Réglages de génération » du benchmark. Astuce : 4096 tokens max évite de couper les modèles à raisonnement pendant leur réflexion.
@@ -196,7 +208,7 @@ const { formatRunOptions } = useBenchmarkFormat()
 const form = ref(null) // { ollama_url, default_judge, benchmark_options: { temperature, num_ctx, num_predict } }
 const defaults = ref({})
 const customOptions = ref(false) // décoché = benchmark_options null (défauts de lib/config.py)
-const modelValue = reactive({ temperature: false, num_ctx: false }) // « valeur du modèle » → null
+const modelValue = reactive({ temperature: false, num_ctx: false, seed: false }) // « valeur du modèle » (seed : aléatoire) → null
 
 async function loadSettings() {
   const { settings, defaults: d } = await $fetch('/api/settings')
@@ -205,11 +217,13 @@ async function loadSettings() {
   form.value = {
     ollama_url: settings.ollama_url ?? '',
     default_judge: settings.default_judge ?? '',
-    benchmark_options: { temperature: opts.temperature ?? 0.2, num_ctx: opts.num_ctx ?? 8192, num_predict: opts.num_predict },
+    // seed absente (réglages enregistrés avant son ajout) → défaut de lib/config.py
+    benchmark_options: { temperature: opts.temperature ?? 0.2, num_ctx: opts.num_ctx ?? 8192, num_predict: opts.num_predict, seed: opts.seed ?? d.benchmark_options?.seed ?? 42 },
   }
   customOptions.value = !!settings.benchmark_options
   modelValue.temperature = opts.temperature == null
   modelValue.num_ctx = opts.num_ctx == null
+  modelValue.seed = opts.seed === null
 }
 onMounted(loadSettings)
 
@@ -242,7 +256,8 @@ async function save() {
         ollama_url: form.value.ollama_url || null,
         default_judge: form.value.default_judge || null,
         benchmark_options: customOptions.value
-          ? { temperature: modelValue.temperature ? null : o.temperature, num_ctx: modelValue.num_ctx ? null : o.num_ctx, num_predict: o.num_predict }
+          ? { temperature: modelValue.temperature ? null : o.temperature, num_ctx: modelValue.num_ctx ? null : o.num_ctx, num_predict: o.num_predict,
+              seed: modelValue.seed ? null : o.seed }
           : null,
       },
     })

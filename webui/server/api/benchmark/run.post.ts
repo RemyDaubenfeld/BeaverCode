@@ -17,7 +17,11 @@ function validateOptions(options: unknown): BenchmarkRunOptions | undefined {
   if (!(inRange(o.num_predict, 16, 32768) && Number.isInteger(o.num_predict))) {
     throw createError({ statusCode: 400, statusMessage: 'Tokens max invalides (16 à 32768)' });
   }
-  return { temperature: o.temperature as number | null, num_ctx: o.num_ctx as number | null, num_predict: o.num_predict as number };
+  if (o.seed !== undefined && o.seed !== null && !(inRange(o.seed, 0, 2147483647) && Number.isInteger(o.seed))) {
+    throw createError({ statusCode: 400, statusMessage: 'Seed invalide (entier de 0 à 2147483647, ou aléatoire)' });
+  }
+  return { temperature: o.temperature as number | null, num_ctx: o.num_ctx as number | null, num_predict: o.num_predict as number,
+    ...(o.seed !== undefined ? { seed: o.seed as number | null } : {}) };
 }
 
 // Plan de relance : { "<modèle>": ["<id de test>", …] } — noms et ids vérifiés (pas de texte arbitraire

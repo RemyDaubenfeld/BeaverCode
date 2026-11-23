@@ -56,18 +56,30 @@
         <ClipboardDocumentIcon class="w-3.5 h-3.5" />
         {{ copied === 'message' ? 'copié' : 'copier' }}
       </button>
+      <button
+        v-if="hasRaw"
+        type="button"
+        @click="emit('raw')"
+        class="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 flex items-center gap-1 rounded-md hover:text-bc-text-primary cursor-pointer transition-opacity"
+        title="Voir la requête envoyée à Ollama et sa réponse brute"
+      >
+        <CodeBracketIcon class="w-3.5 h-3.5" />
+        requête brute
+      </button>
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, watch } from 'vue'
-import { LightBulbIcon, ChevronDownIcon, ClipboardDocumentIcon } from '@heroicons/vue/24/outline'
+import { LightBulbIcon, ChevronDownIcon, ClipboardDocumentIcon, CodeBracketIcon } from '@heroicons/vue/24/outline'
 
 const props = defineProps({
   message: { type: Object, required: true },
   live: { type: Boolean, default: false }, // réponse en cours de génération
+  hasRaw: { type: Boolean, default: false }, // requête brute disponible (réponses générées dans cette session)
 })
+const emit = defineEmits(['raw'])
 
 const html = computed(() => renderMarkdown(props.message.content))
 
@@ -98,7 +110,8 @@ const statParts = computed(() => {
     parts.push({ label: `TTFT ${fmtSec(s.ttft_sec)}${load}`, title: 'Temps avant le premier token, mesuré par le navigateur. Le chargement du modèle en mémoire est compté dedans quand il a eu lieu.' })
   }
   if (s.prompt_tokens != null) parts.push({ label: `contexte ${s.prompt_tokens} tok`, title: 'Tokens du prompt envoyé (prompt système + historique + message)' })
-  if (s.total_sec != null) parts.push({ label: fmtSec(s.total_sec), title: 'Durée totale' })
+  if (s.total_sec != null) parts.push({ label: fmtSec(s.total_sec), title: s.continued ? 'Durée de la dernière suite' : 'Durée totale' })
+  if (s.continued) parts.push({ label: `continuée ×${s.continued}`, title: 'Réponse prolongée avec « Continuer » : les stats sont celles de la dernière suite' })
   return parts
 })
 

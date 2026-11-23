@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue'
+import { ref, computed, reactive, toRaw } from 'vue'
 
 // État du chat manuel (page WebUI), au niveau du module comme useBenchmarkRun.js : une réponse en cours de
 // génération continue de s'afficher si on change de page et qu'on revient (le flux HTTP n'est pas coupé par
@@ -13,8 +13,18 @@ const streaming = ref(false)
 const errorMessage = ref('')
 let abortController = null
 
+// Requête brute de chaque réponse générée dans cette session : { request: corps envoyé à Ollama, done: dernier
+// morceau de sa réponse }. Gardée en mémoire seulement (clé : le message), pas enregistrée avec la conversation :
+// le corps contient tout l'historique, l'enregistrer à chaque réponse ferait grossir le fichier au carré.
+const rawExchanges = reactive(new Map())
+
 const DEFAULT_TITLE = 'Nouvelle conversation'
-const DEFAULT_OPTIONS = () => ({ temperature: null, num_ctx: null, num_predict: null }) // null = valeur du modèle
+// null = valeur du modèle (ou du serveur Ollama pour keep_alive) ; mêmes clés que ChatOptions (chat.service.ts)
+const DEFAULT_OPTIONS = () => ({
+  temperature: null, num_ctx: null, num_predict: null,
+  top_p: null, top_k: null, min_p: null, repeat_penalty: null, seed: null, stop: null,
+  keep_alive: null, format: null,
+})
 
 function newId() {
   return `${new Date().toISOString().replace(/[:.]/g, '-')}-${Math.random().toString(36).slice(2, 8)}`
@@ -28,7 +38,7 @@ function newConversation(model = null) {
     title: DEFAULT_TITLE,
     model: model ?? previous?.model ?? null,
     system: previous?.system ?? '',
-    options: previous ? { ...previous.options } : DEFAULT_OPTIONS(),
+    options: previous ? { ...DEFAULT_OPTIONS(), ...previous.options } : DEFAULT_OPTIONS(),
     think: previous?.think ?? true,
     messages: [],
     created_at: new Date().toISOString(),
@@ -48,7 +58,10 @@ async function openConversation(id) {
   if (streaming.value) return
   errorMessage.value = ''
   try {
-    conversation.value = await $fetch(`/api/chat/conversations/${id}`)
+    const c = await $fetch(`/api/chat/conversations/${id}`)
+    // conversations enregistrées avant l'ajout d'un réglage : les réglages manquants prennent « valeur du modèle »
+    c.options = { ...DEFAULT_OPTIONS(), ...c.options }
+    conversation.value = c
   } catch (e) {
     errorMessage.value = e.data?.statusMessage ?? 'Impossible d\'ouvrir la conversation'
   }
@@ -130,27 +143,40 @@ async function regenerate({ think }) {
   await generate(think)
 }
 
-async function generate(think) {
+// « Continuer » : prolonge la dernière réponse, arrêtée ou coupée par la limite. Ollama reprend là où le texte
+// s'arrête quand le dernier message envoyé vient du modèle. Réflexion coupée : elle a déjà eu lieu, et la
+// réflexion n'est pas renvoyée dans l'historique (seul le texte de la réponse l'est).
+async function continueReply({ think }) {
+  if (!canContinue.value) return
+  await generate(think === null ? null : false, { continuing: true })
+}
+
+async function generate(think, { continuing = false } = {}) {
   const c = conversation.value
   errorMessage.value = ''
   streaming.value = true
-  // historique envoyé AVANT d'ajouter la réponse en cours ; les réponses en erreur n'en font pas partie
+  // historique envoyé ; les réponses en erreur n'en font pas partie. En mode « Continuer », il se termine par
+  // la réponse à prolonger (qui est aussi le message qui va recevoir la suite)
   const history = c.messages
     .filter((m) => !m.error)
     .map((m) => ({ role: m.role, content: m.content }))
-  c.messages.push({ role: 'assistant', content: '', thinking: '', model: c.model })
+  if (!continuing) c.messages.push({ role: 'assistant', content: '', thinking: '', model: c.model })
   const reply = c.messages.at(-1) // objet réactif : chaque morceau reçu met l'affichage à jour
+  if (reply.thinking === undefined) reply.thinking = ''
+  const previousStats = continuing ? reply.stats : null
+  delete reply.stats
 
   abortController = new AbortController()
   const startedAt = performance.now()
   let ttftSec = null
   let lastChunk = null
+  let request = null
 
   try {
     const response = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: c.model, messages: history, system: c.system, options: c.options, think }),
+      body: JSON.stringify({ model: c.model, messages: history, system: c.system, options: c.options, think, continue: continuing }),
       signal: abortController.signal,
     })
     if (!response.ok || !response.body) {
@@ -170,6 +196,11 @@ async function generate(think) {
       for (const line of lines) {
         if (!line.trim()) continue
         const chunk = JSON.parse(line)
+        // 1re ligne ajoutée par le serveur : le corps exact envoyé à Ollama (vue « requête brute »)
+        if (chunk.beavercode_request) {
+          request = chunk.beavercode_request
+          continue
+        }
         // erreur en cours de flux (ex. CUDA out of memory) : Ollama envoie {"error": "..."} après un statut 200
         if (chunk.error) throw new Error(chunk.error)
         const piece = chunk.message?.content ?? ''
@@ -186,9 +217,13 @@ async function generate(think) {
       reply.stats = { model: c.model, ttft_sec: ttftSec, total_sec: (performance.now() - startedAt) / 1000, done_reason: 'stopped' }
     } else {
       reply.error = e.message ?? 'Erreur pendant la génération'
+      if (previousStats) reply.stats = previousStats
     }
   } finally {
+    // nombre de « Continuer » appliqués à cette réponse (les stats affichées sont celles du dernier morceau)
+    if (continuing && reply.stats) reply.stats.continued = (previousStats?.continued ?? 0) + 1
     if (!reply.thinking) delete reply.thinking
+    if (request) rawExchanges.set(toRaw(reply), { request, done: lastChunk })
     streaming.value = false
     abortController = null
     await saveConversation()
@@ -197,6 +232,17 @@ async function generate(think) {
 
 function stop() {
   abortController?.abort()
+}
+
+// « Continuer » : la dernière réponse a du texte, et s'est arrêtée avant sa fin (bouton Arrêter ou limite atteinte)
+const canContinue = computed(() => {
+  const last = conversation.value?.messages.at(-1)
+  return !streaming.value && last?.role === 'assistant' && !!last.content && !last.error
+    && ['length', 'stopped'].includes(last.stats?.done_reason)
+})
+
+function rawExchange(message) {
+  return rawExchanges.get(toRaw(message)) ?? null
 }
 
 const canRegenerate = computed(() => {
@@ -211,6 +257,8 @@ export function useChat() {
     streaming,
     errorMessage,
     canRegenerate,
+    canContinue,
+    rawExchange,
     newConversation,
     loadConversations,
     openConversation,
@@ -218,6 +266,7 @@ export function useChat() {
     renameConversation,
     send,
     regenerate,
+    continueReply,
     stop,
   }
 }

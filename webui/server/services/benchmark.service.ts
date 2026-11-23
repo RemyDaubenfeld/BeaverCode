@@ -41,7 +41,9 @@ export async function getBenchmarkManifest(models?: string[], withSettings = tru
   if (!withSettings) return manifest;
   const settings = getSettings();
   if (settings.default_judge) manifest.default_judge = settings.default_judge;
-  if (settings.benchmark_options) manifest.default_options = settings.benchmark_options;
+  // fusion, pas remplacement : des réglages enregistrés avant l'ajout d'une option (ex. seed) gardent
+  // le défaut de lib/config.py pour celle-ci
+  if (settings.benchmark_options) manifest.default_options = { ...manifest.default_options, ...settings.benchmark_options };
   return manifest;
 }
 
@@ -92,10 +94,11 @@ export function runBenchmarkStream(params: BenchmarkRunRequest): LogEmitter {
   }
   // options de génération (absentes → défauts de lib/config.py côté Python) ; null → « model »
   if (params.options) {
-    const { temperature, num_ctx, num_predict } = params.options;
+    const { temperature, num_ctx, num_predict, seed } = params.options;
     args.push('--temperature', temperature == null ? 'model' : String(temperature));
     args.push('--num-ctx', num_ctx == null ? 'model' : String(num_ctx));
     args.push('--num-predict', String(num_predict));
+    if (seed !== undefined) args.push('--seed', seed == null ? 'model' : String(seed));
   }
   if (params.judgeModel) {
     args.push('--judge', params.judgeModel);

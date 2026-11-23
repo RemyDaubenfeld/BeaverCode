@@ -1,4 +1,6 @@
-/__pycache__
+# Cache Python, à tous les niveaux (/__pycache__ ne couvrait que la racine)
+__pycache__/
+*.pyc
 /.claude
 /docs
 /harnais

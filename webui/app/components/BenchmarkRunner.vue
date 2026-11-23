@@ -242,6 +242,27 @@
           />
         </div>
 
+        <div>
+          <label
+            class="block text-xs text-bc-text-secondary mb-1"
+            for="bench-seed"
+            title="Graine du tirage aléatoire : à seed et réglages égaux, un modèle redonne la même réponse, donc deux runs sont comparables. Aléatoire : chaque run tire différemment."
+          >Seed</label>
+          <div class="flex items-center gap-2">
+            <input
+              id="bench-seed"
+              v-model.number="options.seed"
+              type="number" min="0" max="2147483647" step="1"
+              :disabled="running || modelDefault.seed"
+              class="w-24 px-2 py-1 text-sm rounded-bc bg-bc-surface-alt border border-bc-border font-mono text-bc-text-primary disabled:opacity-40"
+            />
+            <label class="flex items-center gap-1.5 text-xs text-bc-text-secondary cursor-pointer select-none">
+              <input type="checkbox" v-model="modelDefault.seed" class="accent-bc-orange" :disabled="running" />
+              aléatoire
+            </label>
+          </div>
+        </div>
+
         <button
           v-if="optionsChanged"
           @click="resetOptions"
@@ -261,6 +282,7 @@
     </section>
 
     <!-- Lancement -->
+    <BenchmarkPowerWarning v-if="!running" class="mb-3" />
     <div class="flex items-center gap-3 mb-6">
       <p v-if="running" class="text-xs text-bc-text-secondary">
         
@@ -297,6 +319,7 @@
 import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { ChevronDownIcon, InformationCircleIcon } from '@heroicons/vue/24/outline'
 import TestsManagerModal from './TestsManagerModal.vue'
+import BenchmarkPowerWarning from './BenchmarkPowerWarning.vue'
 
 const { modelList } = useModels()
 const { categoryLabels, categoryCapability, capabilityGroupLabels, capabilityOrder, categoryIcons, defaultCategoryIcon, categoryRequiredCapabilities } = useTestCategories()
@@ -321,15 +344,16 @@ const hiddenSelectedCount = computed(() => {
 })
 
 // --- Réglages de génération (préremplis depuis manifest.default_options, cf. lib/config.py)
-const options = ref(null) // { temperature, num_ctx, num_predict } tels que saisis
-const modelDefault = reactive({ temperature: false, num_ctx: false }) // cochée = ne pas imposer de valeur
+const options = ref(null) // { temperature, num_ctx, num_predict, seed } tels que saisis
+const modelDefault = reactive({ temperature: false, num_ctx: false, seed: false }) // cochée = ne pas imposer de valeur (seed : aléatoire)
 
 function resetOptions() {
   const d = manifest.value?.default_options
   if (!d) return
-  options.value = { temperature: d.temperature ?? 0.2, num_ctx: d.num_ctx ?? 8192, num_predict: d.num_predict }
+  options.value = { temperature: d.temperature ?? 0.2, num_ctx: d.num_ctx ?? 8192, num_predict: d.num_predict, seed: d.seed ?? 42 }
   modelDefault.temperature = d.temperature == null
   modelDefault.num_ctx = d.num_ctx == null
+  modelDefault.seed = d.seed === null
 }
 
 // valeurs réellement envoyées : null pour « valeur du modèle »
@@ -337,12 +361,14 @@ const runOptions = computed(() => options.value && {
   temperature: modelDefault.temperature ? null : options.value.temperature,
   num_ctx: modelDefault.num_ctx ? null : options.value.num_ctx,
   num_predict: options.value.num_predict,
+  seed: modelDefault.seed ? null : options.value.seed,
 })
 
 const optionsChanged = computed(() => {
   const d = manifest.value?.default_options
   const o = runOptions.value
-  return !!d && !!o && (o.temperature !== d.temperature || o.num_ctx !== d.num_ctx || o.num_predict !== d.num_predict)
+  return !!d && !!o && (o.temperature !== d.temperature || o.num_ctx !== d.num_ctx || o.num_predict !== d.num_predict
+    || o.seed !== (d.seed === undefined ? 42 : d.seed))
 })
 
 // mêmes bornes que la validation serveur (run.post.ts)
@@ -353,6 +379,7 @@ const optionsError = computed(() => {
   if (o.temperature !== null && !(isNum(o.temperature) && o.temperature >= 0 && o.temperature <= 2)) return 'Température : entre 0 et 2.'
   if (o.num_ctx !== null && !(Number.isInteger(o.num_ctx) && o.num_ctx >= 512 && o.num_ctx <= 262144)) return 'Contexte : nombre entier entre 512 et 262144.'
   if (!(Number.isInteger(o.num_predict) && o.num_predict >= 16 && o.num_predict <= 32768)) return 'Tokens max : nombre entier entre 16 et 32768.'
+  if (o.seed !== null && !(Number.isInteger(o.seed) && o.seed >= 0 && o.seed <= 2147483647)) return 'Seed : nombre entier entre 0 et 2147483647.'
   return ''
 })
 

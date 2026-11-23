@@ -27,6 +27,7 @@ export interface BenchmarkManifest {
   categories: BenchmarkManifestCategory[]
   default_judge: string
   default_options: BenchmarkRunOptions
+  thinking_time_limit_sec?: number // plafond de durée d'un passage de test « thinking » (lib/config.py)
   recommended?: Record<string, string[]>
 }
 
@@ -36,6 +37,8 @@ export interface BenchmarkRunOptions {
   temperature: number | null
   num_ctx: number | null
   num_predict: number
+  // graine du tirage : null = aléatoire ; absente = défaut de lib/config.py (42)
+  seed?: number | null
 }
 
 export interface BenchmarkRunRequest {
