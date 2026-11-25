@@ -119,10 +119,34 @@ export const pullModelStream = (model: string, signal?: AbortSignal): Promise<Re
 
 const HF_API_URL = 'https://huggingface.co/api/models';
 
-// Fin du nom de fichier = quantification : Q4_K_M, IQ4_XS, UD-Q4_K_XL, BF16, F16, Q8_0…
-const QUANT_REGEX = /[-._]((?:UD-)?(?:I?Q\d[A-Z0-9_]*|BF16|F16|F32))$/i;
+// Fin du nom de fichier = quantification : Q4_K_M, IQ4_XS, UD-Q4_K_XL, MXFP4_MOE, BF16, F16, Q8_0…
+const QUANT_REGEX = /[-._]((?:UD-)?(?:I?Q\d[A-Z0-9_]*|MXFP4(?:_MOE)?|BF16|F16|F32))$/i;
 // Fichier découpé : <nom>-00001-of-00003.gguf
 const SPLIT_REGEX = /-(\d{5})-of-(\d{5})$/;
+
+// Fichiers GGUF qui ne sont pas un modèle utilisable seul — à ne pas proposer, ils se feraient passer pour
+// une quantification (HuggingFace répond alors « The specified tag is not available in the repository ») :
+// - projecteur vision (mmproj, n'importe où dans le nom : « mmproj-BF16 » comme « Nemotron-…-mmproj-BF16 ») :
+//   Ollama le récupère avec le modèle ;
+// - matrice d'importance (imatrix) : sert à fabriquer les quantifications ;
+// - modèles de brouillon / têtes MTP (dflash-, dspark-, mtp-, draft-, ou rangés dans un dossier de ce nom) :
+//   quelques centaines de Mo à quelques Go, ils accélèrent un modèle (décodage spéculatif) sans le remplacer.
+// Constaté le 25/11 : unsloth/…-Nemotron-3.5-Bolt-E4B (dflash-…-Q8_0, 380 Mo), unsloth/Inkling-2-Mini
+// (dspark/…-BF16, 617 Mo), unsloth/Qwen3.8-Flash-Next (MTP/mtp-…).
+const AUX_NAME_REGEX = /mmproj|imatrix/i;
+const DRAFT_REGEX = /(?:^|\/)(?:dflash|dspark|mtp|draft)[-_/]/i;
+
+// Quantifications qu'un fichier unique porte bien, mais que HuggingFace refuse comme tag (réponse
+// « The specified tag is not a valid quantization scheme ») : il n'accepte que les noms de llama.cpp.
+// Constaté le 25/11 : « Q3_K », « Q4_K », « Q5_K » (huihui-ai, sans le _S/_M final que llama.cpp exige pour
+// ces trois-là) et les Q4_K_L…Q6_K_L de bartowski (variantes maison). Passent : Q2_K et Q6_K (noms complets
+// chez llama.cpp, sans variante _S/_M), Q2_K_L, Q3_K_L, Q3_K_XL, les UD-… d'unsloth et MXFP4_MOE.
+function unsupportedQuantReason(quant: string): string | null {
+  const q = quant.toUpperCase().replace(/^UD-/, '');
+  if (/^Q[345]_K$/.test(q)) return `nom « ${quant} » refusé par HuggingFace (il attend ${quant}_S ou ${quant}_M)`;
+  if (/^Q[4-8]_K_L$/.test(q)) return `variante « ${quant} » propre à ce dépôt, refusée par HuggingFace`;
+  return null;
+}
 
 interface HfTreeEntry {
   type: 'file' | 'directory'
@@ -153,8 +177,7 @@ export async function getHfRepo(repo: string): Promise<HfRepo> {
   for (const entry of tree) {
     if (entry.type !== 'file' || !entry.path.toLowerCase().endsWith('.gguf')) continue;
     const filename = entry.path.split('/').pop()!;
-    // projecteur vision (mmproj-*.gguf) : pas un modèle à part entière, Ollama le récupère avec le modèle
-    if (filename.toLowerCase().startsWith('mmproj')) continue;
+    if (AUX_NAME_REGEX.test(filename) || DRAFT_REGEX.test(entry.path)) continue; // fichier annexe, voir plus haut
     let stem = filename.slice(0, -'.gguf'.length);
     const split = SPLIT_REGEX.test(stem);
     stem = stem.replace(SPLIT_REGEX, '');
@@ -166,8 +189,14 @@ export async function getHfRepo(repo: string): Promise<HfRepo> {
       existing.size += entry.size;
       existing.split ||= split;
     } else {
-      byQuant.set(key, { quant, filename: entry.path, size: entry.size, split });
+      byQuant.set(key, { quant, filename: entry.path, size: entry.size, split, unavailable: null });
     }
+  }
+  // raison pour laquelle Ollama ne pourra pas télécharger cette quantification (null = téléchargeable)
+  for (const file of byQuant.values()) {
+    file.unavailable = file.split
+      ? 'découpé en plusieurs fichiers : Ollama ne sait pas encore les télécharger depuis HuggingFace'
+      : unsupportedQuantReason(file.quant);
   }
 
   const total = info.gguf?.total ?? null;

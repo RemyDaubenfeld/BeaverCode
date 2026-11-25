@@ -30,6 +30,9 @@ export interface HfGgufFile {
   filename: string
   size: number // octets (somme des morceaux si le fichier est découpé)
   split: boolean // découpé en plusieurs fichiers (00001-of-00003) : non téléchargeable par Ollama
+  // pourquoi Ollama ne pourra pas le télécharger (fichier découpé, nom de quantification refusé par
+  // HuggingFace…) ; null = téléchargeable
+  unavailable: string | null
 }
 
 export interface HfRepo {

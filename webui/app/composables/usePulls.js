@@ -7,6 +7,21 @@ const controllers = new Map()
 const waiting = [] // { tag, resolve }
 let running = false
 
+// Messages d'erreur de HuggingFace (en anglais, relayés tels quels par Ollama) → explication en français,
+// le message d'origine gardé à la fin. Messages constatés le 25/11 sur les dépôts concernés.
+const PULL_ERROR_HINTS = [
+  [/specified tag is not available/i, "aucun modèle de ce dépôt ne porte cette quantification (souvent un fichier annexe — brouillon, projecteur vision — pris pour une quantification)"],
+  [/not a valid quantization scheme/i, "HuggingFace refuse ce nom de quantification (il n'accepte que les noms de llama.cpp, ex. Q4_K_M plutôt que Q4_K ou Q4_K_L)"],
+  [/sharded GGUF/i, "fichier découpé en plusieurs morceaux : Ollama ne sait pas encore les télécharger depuis HuggingFace"],
+  [/not GGUF or is not compatible/i, "ce dépôt ne contient pas de modèle GGUF utilisable par llama.cpp"],
+  [/rate limit/i, "HuggingFace limite temporairement les requêtes depuis ta connexion : réessayer dans quelques minutes"],
+]
+
+function explainPullError(message) {
+  const hint = PULL_ERROR_HINTS.find(([pattern]) => pattern.test(message))
+  return hint ? `${hint[1]} (« ${message} »)` : message
+}
+
 export function usePulls() {
   // tag -> { tag, progress, status, error, queued }
   const pulls = useState('model-pulls', () => ({}))
@@ -58,7 +73,7 @@ export function usePulls() {
         for (const line of lines) {
           if (!line.trim()) continue
           const data = JSON.parse(line)
-          if (data.error) throw new Error(data.error)
+          if (data.error) throw new Error(explainPullError(data.error))
           const entry = pulls.value[tag]
           if (data.status) entry.status = data.status
           if (data.total && data.completed) {

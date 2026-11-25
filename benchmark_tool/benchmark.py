@@ -94,9 +94,15 @@ def power_state() -> dict:
         pass
     return {"profile": profile, "on_ac": on_ac}
 
-def with_power(entry: dict) -> dict:
-    """Ajoute à une entrée de résultat le profil d'alimentation au moment du test (avant son émission)."""
+# Version d'Ollama : une mise à jour change llama.cpp, donc les vitesses (et parfois les réponses). Lue une
+# fois au début du run (main) ; enregistrée avec chaque test pour la même raison que le profil d'alimentation.
+OLLAMA_VERSION: str | None = None
+
+def with_conditions(entry: dict) -> dict:
+    """Ajoute à une entrée de résultat les conditions de mesure : profil d'alimentation au moment du test et
+    version d'Ollama (avant son émission)."""
     entry["power"] = power_state()
+    entry["ollama_version"] = OLLAMA_VERSION
     return entry
 
 # ─── Envoi d'un prompt ───────────────────────────────────────────────────────
@@ -683,7 +689,7 @@ def benchmark_model(
                 total_time += entry["elapsed_sec"]
             if verbose:
                 print(f"{entry['score']}/5 — {entry['strengths'] or entry['weaknesses']}")
-            results.append(with_power(entry))
+            results.append(with_conditions(entry))
             if stream_json:
                 emit_json({"event": "test_result", "model": model, **entry})
             continue
@@ -700,7 +706,7 @@ def benchmark_model(
                 message += (" — mémoire GPU insuffisante (avec une image, l'encodeur vision en demande en plus du "
                             "modèle) : décharger les autres modèles, ou réduire le contexte, puis relancer")
             entry = error_entry(test, message)
-            results.append(with_power(entry))
+            results.append(with_conditions(entry))
             if stream_json:
                 emit_json({"event": "test_result", "model": model, **entry})
             continue
@@ -720,7 +726,7 @@ def benchmark_model(
                 entry = {**error_entry(test, "Réponse vide", run), "error": False, "response_preview": ""}
             if verbose:
                 print(entry["weaknesses"])
-            results.append(with_power(entry))
+            results.append(with_conditions(entry))
             if stream_json:
                 emit_json({"event": "test_result", "model": model, **entry})
             continue
@@ -781,7 +787,7 @@ def benchmark_model(
             # tests de runs différents, chaque test doit donc porter les siens
             "options": dict(RUN_OPTIONS),
         }
-        results.append(with_power(test_entry))
+        results.append(with_conditions(test_entry))
         if stream_json:
             emit_json({"event": "test_result", "model": model, **test_entry})
 
@@ -837,6 +843,7 @@ def save_results(all_results: list[dict], output_path: str = "benchmark_results.
             "ollama_host": OllamaClient().base_url,
             "options": RUN_OPTIONS,
             "power": power_state(),  # au moment de l'enregistrement ; le détail est dans chaque test
+            "ollama_version": OLLAMA_VERSION,
             "models": all_results
         }, f, ensure_ascii=False, indent=2)
     if not quiet:
@@ -851,6 +858,7 @@ def option_value(cast):
     return parse
 
 def main():
+    global OLLAMA_VERSION  # lue une fois au début du run, voir with_conditions()
     parser = argparse.ArgumentParser(
         description="Benchmark automatisé de modèles Ollama",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -909,6 +917,7 @@ Exemples :
         args.models = list(plan)
 
     with OllamaClient(base_url=args.host) as client:
+        OLLAMA_VERSION = client.version()
 
         if args.list_models:
             models = list_local_models(client)

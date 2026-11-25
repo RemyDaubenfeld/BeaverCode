@@ -45,7 +45,9 @@ export function slowPower(power) {
 
 export function speedTooltip(test) {
   const warn = slowPower(test.power) ? '\nMesurée hors mode performance sur secteur : vitesse plus basse, pas comparable.' : ''
-  return `Réglages : ${formatRunOptions(test.options)}\n${formatPower(test.power)}${warn}`
+  // version d'Ollama absente = test antérieur à son enregistrement (25/11, passage de 0.31.1 à 0.40.18)
+  const version = test.ollama_version ? `Ollama ${test.ollama_version}` : 'version d\'Ollama non enregistrée (test antérieur)'
+  return `Réglages : ${formatRunOptions(test.options)}\n${formatPower(test.power)} · ${version}${warn}`
 }
 
 // Réglages de génération d'un run / d'un test (voir RUN_OPTIONS dans benchmark.py) → texte court.

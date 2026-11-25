@@ -22,7 +22,16 @@
         Aucun fichier GGUF dans ce dépôt (Ollama ne télécharge depuis HuggingFace que des modèles au format GGUF ; cherche un dépôt dont le nom finit souvent par « -GGUF »).
       </p>
 
-      <ul v-else class="space-y-1">
+      <p v-else-if="!downloadableCount" class="mb-3 flex items-start gap-2 rounded-bc border border-bc-warning/50 bg-bc-warning/10 px-3 py-2 text-xs text-bc-text-secondary" role="status">
+        <ExclamationTriangleIcon class="mt-0.5 h-4 w-4 shrink-0 text-bc-warning" />
+        <span>
+          <strong class="text-bc-warning">Aucune version de ce dépôt n'est téléchargeable par Ollama.</strong>
+          Raisons ci-dessous. Pour un fichier découpé, il faudrait télécharger les morceaux à la main, les
+          rassembler (<span class="font-mono">llama-gguf-split --merge</span>) puis importer le GGUF local.
+        </span>
+      </p>
+
+      <ul v-if="info.files.length" class="space-y-1">
         <li
           v-for="f in info.files"
           :key="f.quant"
@@ -30,17 +39,20 @@
         >
           <span class="w-28 shrink-0 font-mono text-xs text-bc-text-primary" :title="f.filename">{{ f.quant }}</span>
           <span class="w-16 shrink-0 font-mono text-xs text-bc-text-secondary">{{ formatGo(f.size) }}</span>
+          <!-- non téléchargeable : la raison remplace l'estimation mémoire (inutile pour un fichier qu'on ne
+               pourra pas tirer) et le bouton, pour ne pas laisser l'erreur arriver au moment du pull -->
+          <span v-if="f.unavailable" class="flex-1 min-w-0 text-xs text-bc-text-secondary">
+            Non téléchargeable par Ollama : {{ f.unavailable }}
+          </span>
           <VramFitBadge
+            v-else
             class="text-xs flex-1 min-w-0"
             :estimate="estimate(f)"
             :details="details(f)"
             :show-size="false"
           />
 
-          <span v-if="f.split" class="shrink-0 text-xs text-bc-text-secondary" title="Ollama ne sait pas encore télécharger un GGUF découpé en plusieurs fichiers depuis HuggingFace">
-            découpé, non supporté
-          </span>
-          <template v-else>
+          <template v-if="!f.unavailable">
             <button
               v-if="isPulling(f)"
               @click="cancelPull(tagFor(f))"
@@ -68,6 +80,7 @@
 </template>
 
 <script setup>
+import { ExclamationTriangleIcon } from '@heroicons/vue/24/outline'
 import { estimateFromWeights, KV_CACHE_GUESS_BYTES } from '~/composables/useVramFit'
 
 const props = defineProps({
@@ -100,6 +113,8 @@ watch(() => props.repo, async (repo) => {
     if (id === requestId) loading.value = false
   }
 }, { immediate: true })
+
+const downloadableCount = computed(() => info.value?.files.filter((f) => !f.unavailable).length ?? 0)
 
 const isMoe = computed(() => info.value?.active_params && info.value.active_params < info.value.total_params)
 

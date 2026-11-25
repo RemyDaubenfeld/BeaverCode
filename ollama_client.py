@@ -168,6 +168,15 @@ class OllamaClient:
     def __exit__(self, *exc) -> None:
         self.close()
 
+    def version(self) -> str | None:
+        """Version du serveur Ollama (GET /api/version), ex. "0.31.1" ; None si indisponible."""
+        try:
+            r = self._client.get("/api/version")
+            r.raise_for_status()
+            return r.json().get("version")
+        except (httpx.HTTPError, ValueError):
+            return None
+
     def capabilities(self, model: str) -> list[str]:
         """Capacités du modèle selon Ollama (/api/show) : completion, tools, thinking, vision, embedding…"""
         r = self._client.post("/api/show", json={"model": model})
