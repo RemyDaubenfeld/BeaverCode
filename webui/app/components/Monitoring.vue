@@ -28,7 +28,7 @@
         :class="benchmarkRunning ? 'text-bc-orange animate-pulse' : ''"
       >
         {{ benchmarkRunning
-          ? `Benchmark ${benchmarkGlobalProgressPercent} %`
+          ? `Benchmark ${benchmarkGlobalProgressPercent} %${benchmarkRunWallSec != null ? ` · ${formatClock(benchmarkRunWallSec)}` : ''}`
           : 'Voir le dernier run' }}
       </button>
       <BenchmarkResultsModal v-if="showResultsModal" />
@@ -125,8 +125,10 @@ const {
   running: benchmarkRunning,
   modelOrder: benchmarkModelOrder,
   globalProgressPercent: benchmarkGlobalProgressPercent,
+  runWallSec: benchmarkRunWallSec,
   showResultsModal,
 } = useBenchmarkRun()
+const { formatClock } = useBenchmarkFormat()
 
 const showLoaded = ref(false)
 

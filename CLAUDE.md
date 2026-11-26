@@ -75,6 +75,7 @@ Le travail UI doit suivre la charte graphique BeaverCode (palette sombre et chau
 - **`tool_calls` arrive sur le morceau du flux qui contient l'appel, pas sur le chunk final** (vide) : toujours les cumuler sur tout le flux (`run_prompt()`)
 - `lib/tests_bank.py` — charge `lib/tests_bank.json`, les cas de test par catégorie (code, chat, reasoning, security, code_style, tool_calling, vision, thinking…), aussi édités depuis la WebUI (« Gérer les tests »). Les tests `thinking` (modèles ayant la capacité) sont vérifiés exactement sur la ligne `ANSWER:` (`expected_answer`, sans juge) et passés deux fois, réflexion activée puis coupée (`think` d'Ollama, `run_thinking_test()`), chaque passage plafonné à 5 min après le premier token (`time_limit_sec` de `run_prompt()`)
 - `lib/metrics.py`, `lib/exports.py` — scoring/métriques et export des résultats
+- Le juge `benchmark-judge:latest` est construit sur le **blob de qwen2.5:3b** avec `num_gpu 0` : Ollama ne gardant qu'un runner par blob, qwen2.5:3b testé est rechargé sur le CPU après chaque passage du juge — ses tok/s sont faussés (pas ses notes).
 - Le modèle juge doit être texte seul — un juge multimodal (ex. basé sur `gemma4:e4b`) plante lors de l'offload CPU du projecteur vision (bug connu llama.cpp/Ollama).
 
 ## Notes issues du contexte précédent

@@ -15,6 +15,15 @@ export function scoreColorClass(score) {
   return scoreColors[Math.round(score)] ?? 'text-bc-text-muted'
 }
 
+// chronomètre : « 4:07 » puis « 1:04:07 » au-delà d'une heure (secondes entières, pas d'arrondi qui saute)
+export function formatClock(seconds) {
+  if (seconds == null) return '—'
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  const sec = String(seconds % 60).padStart(2, '0')
+  return h ? `${h}:${String(m).padStart(2, '0')}:${sec}` : `${m}:${sec}`
+}
+
 export function formatDuration(seconds) {
   if (!seconds || seconds <= 0) return '0s'
   if (seconds < 60) return `${Math.round(seconds)}s`
@@ -106,5 +115,5 @@ export function formatLatency(tests) {
 }
 
 export function useBenchmarkFormat() {
-  return { scoreColorClass, formatDuration, formatRunOptions, formatSeconds, ttftTooltip, formatLatency, formatPower, slowPower, speedTooltip }
+  return { scoreColorClass, formatDuration, formatRunOptions, formatSeconds, ttftTooltip, formatLatency, formatPower, slowPower, speedTooltip, formatClock }
 }

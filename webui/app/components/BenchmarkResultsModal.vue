@@ -12,9 +12,16 @@
       </button>
       <span v-if="running" class="text-sm text-bc-text-secondary">
         Benchmark en cours… ({{ globalProgressPercent }}% — {{ modelsDoneCount }}/{{ modelOrder.length }} modèles)
+        <template v-if="runWallSec != null">
+          — depuis <span class="font-mono text-bc-text-primary" :title="wallTitle">{{ formatClock(runWallSec) }}</span>
+        </template>
       </span>
       <span v-else-if="modelOrder.length" class="text-sm text-bc-text-secondary">
-        Terminé en {{ formatDuration(totalElapsedSec) }}
+        <template v-if="runWallSec != null">
+          Terminé en <span class="font-mono" :title="wallTitle">{{ formatClock(runWallSec) }}</span>
+          (dont {{ formatDuration(totalElapsedSec) }} de génération)
+        </template>
+        <template v-else>Terminé en {{ formatDuration(totalElapsedSec) }}</template>
       </span>
       <button
         v-if="!running && modelOrder.length"
@@ -53,13 +60,17 @@
           </span>
           <span v-if="results[model].status === 'running'" class="text-xs font-mono text-bc-orange">
             {{ results[model].tests.length }} / {{ results[model].testCount }} tests… ({{ modelProgressPercent(model) }}%)
+            · <span :title="wallTitle">{{ formatClock(modelWallSec(model)) }}</span>
+            <span class="text-bc-text-secondary" title="Temps passé sur le test en cours (génération, puis passage du juge)">
+              (test en cours : {{ formatClock(currentTestSec(model)) }})
+            </span>
           </span>
           <span v-else-if="results[model].status === 'done'" class="text-sm">
             <span :class="scoreColorClass(results[model].avgScore)" class="font-mono font-medium">
               {{ results[model].avgScore }}/5 — {{ results[model].verdict }}
             </span>
             <span class="text-bc-text-secondary font-mono">
-              (<template v-if="formatLatency(results[model].tests)"><span title="TTFT : temps avant le premier token, hors chargement (test qui a chargé le modèle écarté, médiane des autres). Chargement : temps de mise en mémoire du modèle, payé au premier test.">{{ formatLatency(results[model].tests) }}</span> · </template>{{ results[model].avgTokensPerSec }} tok/s, {{ formatDuration(modelElapsedSec(model)) }}<template v-if="results[model].skipped?.length">, {{ results[model].skipped.length }} ignoré{{ results[model].skipped.length > 1 ? 's' : '' }} : capacité absente</template>)
+              (<template v-if="formatLatency(results[model].tests)"><span title="TTFT : temps avant le premier token, hors chargement (test qui a chargé le modèle écarté, médiane des autres). Chargement : temps de mise en mémoire du modèle, payé au premier test.">{{ formatLatency(results[model].tests) }}</span> · </template>{{ results[model].avgTokensPerSec }} tok/s, <span :title="modelWallSec(model) != null ? `${formatDuration(modelElapsedSec(model))} de génération, le reste : chargement du modèle et juge` : 'Somme des durées de génération'">{{ modelWallSec(model) != null ? formatClock(modelWallSec(model)) : formatDuration(modelElapsedSec(model)) }}</span><template v-if="results[model].skipped?.length">, {{ results[model].skipped.length }} ignoré{{ results[model].skipped.length > 1 ? 's' : '' }} : capacité absente</template>)
             </span>
           </span>
           <span v-else class="text-xs text-bc-text-secondary">en attente…</span>
@@ -106,6 +117,9 @@ const {
   modelProgressPercent,
   modelElapsedSec,
   totalElapsedSec,
+  runWallSec,
+  modelWallSec,
+  currentTestSec,
   modelsDoneCount,
   globalProgressPercent,
   cancelBenchmark,
@@ -114,5 +128,8 @@ const {
   resetRun,
 } = useBenchmarkRun()
 
-const { scoreColorClass, formatDuration, formatSeconds, ttftTooltip, formatLatency } = useBenchmarkFormat()
+const { scoreColorClass, formatDuration, formatSeconds, ttftTooltip, formatLatency, formatClock } = useBenchmarkFormat()
+
+const wallTitle = 'Temps réel écoulé : génération, chargement du modèle et passages du juge compris'
+
 </script>

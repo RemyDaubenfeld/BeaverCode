@@ -701,10 +701,20 @@ def benchmark_model(
                 print(f"ERREUR ({e})")
             message = f"Erreur : {e}"
             if "out of memory" in str(e).lower():
-                # vu le 17/11 sur les tests de vision : l'encodage de l'image demande de la mémoire GPU en plus
-                # du modèle déjà chargé, et llama-server plante
-                message += (" — mémoire GPU insuffisante (avec une image, l'encodeur vision en demande en plus du "
-                            "modèle) : décharger les autres modèles, ou réduire le contexte, puis relancer")
+                if test.get("images"):
+                    # vu le 17/11 sur les tests de vision : l'encodage de l'image demande de la mémoire GPU en
+                    # plus du modèle déjà chargé, et llama-server plante
+                    message += (" — mémoire GPU insuffisante (avec une image, l'encodeur vision en demande en plus "
+                                "du modèle) : décharger les autres modèles, ou réduire le contexte, puis relancer")
+                else:
+                    # vu le 26/11 sur inkling-2-mini (architecture inkling2_loop) : 0 couche sur le GPU, mais
+                    # llama.cpp y réserve quand même le tampon de calcul du traitement du prompt (8 Go demandés
+                    # pour 4 Go de VRAM) — le modèle ne démarre pas du tout, quel que soit le test
+                    size = re.search(r"buffer of size (\d+)", str(e))
+                    asked = f" ({int(size.group(1)) / 1024 ** 3:.1f} Go demandés d'un coup)" if size else ""
+                    message += (f" — mémoire GPU insuffisante au démarrage du modèle{asked} : le tampon de calcul "
+                                "ne tient pas sur la carte graphique ; réduire num_batch (taille des lots de "
+                                "traitement du prompt) ou le contexte dans les paramètres du modèle, puis relancer")
             entry = error_entry(test, message)
             results.append(with_conditions(entry))
             if stream_json:

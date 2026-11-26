@@ -17,6 +17,38 @@ const showResultsModal = ref(false)
 const blockedByOtherRun = ref(false)
 let abortController = null
 
+// Chronomètre (temps réel, horloge du navigateur) : début du run, puis début/fin de chaque modèle et début du
+// test en cours. Contrairement à modelElapsedSec (somme des durées de génération), il compte TOUT : chargement
+// du modèle, passages du juge, tests plantés. `now` avance chaque seconde pendant le run pour l'affichage.
+// Perdu au rechargement de la page (comme le reste de l'état du run).
+const runStartedAt = ref(null)
+const runEndedAt = ref(null)
+const now = ref(Date.now())
+let ticker = null
+
+function startTicker() {
+  clearInterval(ticker)
+  now.value = Date.now()
+  ticker = setInterval(() => { now.value = Date.now() }, 1000)
+}
+
+function stopTicker() {
+  clearInterval(ticker)
+  ticker = null
+  now.value = Date.now()
+}
+
+// secondes écoulées entre deux instants (ms) ; fin absente = encore en cours
+function wallSec(startedAt, endedAt) {
+  if (!startedAt) return null
+  return Math.max(0, Math.floor(((endedAt ?? now.value) - startedAt) / 1000))
+}
+
+const runWallSec = computed(() => wallSec(runStartedAt.value, runEndedAt.value))
+const modelWallSec = (model) => wallSec(results[model]?.startedAt, results[model]?.endedAt)
+// test en cours : depuis le dernier résultat reçu (ou le début du modèle pour le premier test)
+const currentTestSec = (model) => results[model]?.status === 'running' ? wallSec(results[model].testStartedAt) : null
+
 function modelProgressPercent(model) {
   const entry = results[model]
   if (!entry?.testCount) return 0
@@ -63,16 +95,23 @@ function handleEvent(event) {
         detectedTypes: event.detected_types,
         testCount: event.test_count,
         tests: [],
+        startedAt: Date.now(),
+        endedAt: null,
+        testStartedAt: Date.now(),
       }
       expandedModels.value.add(event.model)
       break
     case 'test_result':
-      results[event.model]?.tests.push(event)
+      if (results[event.model]) {
+        results[event.model].tests.push(event)
+        results[event.model].testStartedAt = Date.now()
+      }
       break
     case 'model_done':
       if (results[event.model]) {
         Object.assign(results[event.model], {
           status: 'done',
+          endedAt: Date.now(),
           avgScore: event.avg_score,
           avgTokensPerSec: event.avg_tokens_per_sec,
           verdict: event.verdict,
@@ -106,6 +145,9 @@ async function runBenchmark({ models, testIds, judgeModel, options, plan }) {
     results[model] = { status: 'pending', testCount: plan ? plan[model].length : testIds.length, tests: [] }
   }
   abortController = new AbortController()
+  runStartedAt.value = Date.now()
+  runEndedAt.value = null
+  startTicker()
 
   try {
     const response = await fetch('/api/benchmark/run', {
@@ -142,6 +184,12 @@ async function runBenchmark({ models, testIds, judgeModel, options, plan }) {
     }
   } finally {
     running.value = false
+    runEndedAt.value = Date.now()
+    // run coupé (annulation, erreur) : le modèle en cours s'arrête aussi au chronomètre
+    for (const model of modelOrder.value) {
+      if (results[model]?.startedAt && !results[model].endedAt) results[model].endedAt = runEndedAt.value
+    }
+    stopTicker()
   }
 }
 
@@ -170,6 +218,8 @@ async function stopBenchmark() {
 function resetRun() {
   Object.keys(results).forEach((k) => delete results[k])
   modelOrder.value = []
+  runStartedAt.value = null
+  runEndedAt.value = null
   expandedModels.value = new Set()
   errorMessage.value = ''
   blockedByOtherRun.value = false
@@ -188,6 +238,9 @@ export function useBenchmarkRun() {
     modelProgressPercent,
     modelElapsedSec,
     totalElapsedSec,
+    runWallSec,
+    modelWallSec,
+    currentTestSec,
     modelsDoneCount,
     globalProgressPercent,
     runBenchmark,
