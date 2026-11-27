@@ -5,7 +5,10 @@ export interface TestBankEntry {
   checks: {
     rules: string[]
     judge_criteria: string
+    forbidden?: string[] // tests « rag » : faits inventés ou pris dans le mauvais extrait
   }
+  passages?: string[] // tests « rag » : extraits de documents envoyés comme AnythingLLM le fait
+  expect_refusal?: boolean // tests « rag » : information absente, seule la phrase de refus est juste
   tools?: unknown[]
   expected_tool?: string
   expected_answer?: string

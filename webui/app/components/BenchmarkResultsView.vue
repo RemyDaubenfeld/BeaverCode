@@ -133,6 +133,29 @@
         </button>
       </div>
 
+      <!-- Sous-catégories de la capacité choisie (ex. Completion → RAG, Résumé…) : sans elles, une catégorie de
+           quelques tests est noyée dans la moyenne des autres -->
+      <div v-if="comparisonMode === 'capability' && subcategories.length > 1" class="flex items-center gap-1.5 flex-wrap mb-3">
+        <span class="text-xs text-bc-text-secondary mr-1">Sous-catégorie :</span>
+        <button
+          @click="subcategoryFilter = null"
+          class="flex items-center gap-1 px-2 py-0.5 text-xs rounded-bc border-2 cursor-pointer"
+          :class="subcategoryFilter === null ? 'border-bc-border-strong bg-bc-orange text-bc-ink' : 'border-bc-border text-bc-text-secondary hover:bg-bc-surface-alt'"
+        >
+          Toutes
+        </button>
+        <button
+          v-for="id in subcategories"
+          :key="id"
+          @click="subcategoryFilter = id"
+          class="flex items-center gap-1 px-2 py-0.5 text-xs rounded-bc border-2 cursor-pointer"
+          :class="subcategoryFilter === id ? 'border-bc-border-strong bg-bc-orange text-bc-ink' : 'border-bc-border text-bc-text-secondary hover:bg-bc-surface-alt'"
+        >
+          <component :is="categoryIcons[id] ?? defaultCategoryIcon" class="w-3.5 h-3.5 shrink-0" />
+          {{ categoryLabels[id] ?? id }}
+        </button>
+      </div>
+
       <p v-if="loadingComparison" class="text-sm text-bc-text-secondary">Chargement…</p>
       <p v-else-if="comparisonError" class="text-sm text-bc-danger">{{ comparisonError }}</p>
       <p v-else-if="comparison.length === 0" class="text-sm text-bc-text-secondary">Pas encore de modèle testé.</p>
@@ -191,6 +214,7 @@
           <h3 class="font-display flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-bc-text-secondary mb-1.5">
             <component :is="capabilityGroupIcons[group.id] ?? defaultCategoryIcon" class="w-4 h-4 shrink-0" />
             {{ capabilityGroupLabels[group.id] ?? group.id }}
+            <template v-if="group.subcategory">· {{ categoryLabels[group.subcategory] ?? group.subcategory }}</template>
           </h3>
           <div class="space-y-2">
             <div v-for="entry in group.entries" :key="entry.model" class="rounded-bc border border-bc-border bg-bc-surface-alt px-3 py-1.5">
@@ -199,7 +223,7 @@
                   <span
                     class="shrink-0 w-6 text-right font-mono"
                     :class="entry.rank === 1 ? 'font-semibold text-bc-orange-light' : 'text-bc-text-secondary'"
-                    :title="entry.rank === 1 ? `Meilleur modèle en ${capabilityGroupLabels[group.id] ?? group.id}` : `${entry.rank}e en ${capabilityGroupLabels[group.id] ?? group.id}`"
+                    :title="entry.rank === 1 ? `Meilleur modèle en ${group.label}` : `${entry.rank}e en ${group.label}`"
                   >#{{ entry.rank }}</span>
                   <span class="truncate font-mono text-bc-text-secondary" :title="entry.model">{{ entry.model }}</span>
                 </span>
@@ -247,7 +271,7 @@ import BenchmarkModelTestsModal from './BenchmarkModelTestsModal.vue'
 import BenchmarkPowerWarning from './BenchmarkPowerWarning.vue'
 
 const { scoreColorClass, formatDuration, formatRunOptions } = useBenchmarkFormat()
-const { categoryCapability, capabilityGroupLabels, capabilityOrder, capabilityGroupIcons, defaultCategoryIcon, requiredCapabilities } = useTestCategories()
+const { categoryCapability, categoryLabels, categoryIcons, knownCategories, capabilityGroupLabels, capabilityOrder, capabilityGroupIcons, defaultCategoryIcon, requiredCapabilities } = useTestCategories()
 const { modelList } = useModels()
 const { running, runBenchmark } = useBenchmarkRun()
 
@@ -265,6 +289,9 @@ const loadingComparison = ref(true)
 const comparisonError = ref('')
 const comparisonMode = ref('global')
 const capabilityFilter = ref(null)
+const subcategoryFilter = ref(null)
+// une sous-catégorie n'a de sens que dans sa capacité : on la remet à zéro quand la capacité change
+watch(capabilityFilter, () => { subcategoryFilter.value = null })
 const modelSearch = ref('')
 const deletingModel = ref(null)
 
@@ -457,11 +484,14 @@ function tokensBarWidth(tps) {
 // categoryCapability) et calcule le score/tok-s moyen par groupe — même
 // principe que le regroupement de sélection des tests dans BenchmarkRunner,
 // mais appliqué aux résultats plutôt qu'au manifest.
-const capabilityBreakdown = computed(() => {
+// `subcategory` : ne garder que les tests de cette catégorie (ex. « rag ») dans sa capacité.
+// Tests en erreur exclus, comme dans la note globale du modèle (mesures manquantes, pas des 0/5).
+function breakdown(subcategory = null) {
   const byGroup = {}
   for (const m of filteredComparison.value) {
     const perGroupTests = {}
     for (const test of m.tests) {
+      if (test.error || (subcategory && test.category !== subcategory)) continue
       const groupId = categoryCapability[test.category] ?? 'other'
       ;(perGroupTests[groupId] ??= []).push(test)
     }
@@ -479,13 +509,36 @@ const capabilityBreakdown = computed(() => {
     Math.round(b.avgScore * 10) - Math.round(a.avgScore * 10) || b.avgTokensPerSec - a.avgTokensPerSec
   return [...capabilityOrder, 'other']
     .filter((id) => byGroup[id]?.length)
-    .map((id) => ({ id, entries: [...byGroup[id]].sort(byScoreThenSpeed).map((e, i) => ({ ...e, rank: i + 1 })) }))
-})
+    .map((id) => ({
+      id,
+      subcategory,
+      label: subcategory ? categoryLabels[subcategory] ?? subcategory : capabilityGroupLabels[id] ?? id,
+      entries: [...byGroup[id]].sort(byScoreThenSpeed).map((e, i) => ({ ...e, rank: i + 1 })),
+    }))
+}
+
+// Pour chaque modèle du comparatif, regroupe ses tests par capacité (via
+// categoryCapability) et calcule le score/tok-s moyen par groupe — même
+// principe que le regroupement de sélection des tests dans BenchmarkRunner,
+// mais appliqué aux résultats plutôt qu'au manifest.
+const capabilityBreakdown = computed(() => breakdown())
 
 const allCapabilityGroups = computed(() => capabilityBreakdown.value.map((g) => g.id))
 
+// sous-catégories présentes dans les résultats pour la capacité choisie, dans l'ordre de la banque de tests
+const subcategories = computed(() => {
+  if (!capabilityFilter.value) return []
+  const present = new Set(
+    filteredComparison.value.flatMap((m) => m.tests)
+      .filter((t) => !t.error && (categoryCapability[t.category] ?? 'other') === capabilityFilter.value)
+      .map((t) => t.category),
+  )
+  return [...knownCategories.filter((c) => present.has(c)), ...[...present].filter((c) => !knownCategories.includes(c))]
+})
+
 const filteredCapabilityBreakdown = computed(() => {
   if (!capabilityFilter.value) return capabilityBreakdown.value
-  return capabilityBreakdown.value.filter((g) => g.id === capabilityFilter.value)
+  const groups = subcategoryFilter.value ? breakdown(subcategoryFilter.value) : capabilityBreakdown.value
+  return groups.filter((g) => g.id === capabilityFilter.value)
 })
 </script>

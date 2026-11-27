@@ -49,6 +49,9 @@
                   <p v-if="test.expected_tool"><span class="text-bc-text-secondary">Outil attendu :</span> {{ test.expected_tool }}</p>
                   <p v-if="test.expected_answer"><span class="text-bc-text-secondary">Réponse attendue :</span> {{ test.expected_answer }}</p>
                   <p v-if="test.images?.length"><span class="text-bc-text-secondary">Images :</span> {{ test.images.join(', ') }}</p>
+                  <p v-if="test.passages?.length"><span class="text-bc-text-secondary">Extraits ({{ test.passages.length }}) :</span> <span class="whitespace-pre-wrap">{{ test.passages.join('\n---\n') }}</span></p>
+                  <p v-if="test.checks?.forbidden?.length"><span class="text-bc-text-secondary">Interdits :</span> {{ test.checks.forbidden.join(', ') }}</p>
+                  <p v-if="test.expect_refusal"><span class="text-bc-text-secondary">Réponse attendue :</span> refus (information absente des extraits)</p>
                 </div>
               </details>
             </div>
@@ -121,6 +124,22 @@
         <label class="block text-xs text-bc-text-secondary mb-3">
           Schéma JSON des outils (tableau, format Ollama)
           <textarea v-model="form.toolsJson" rows="6" placeholder='[{"type":"function","function":{...}}]' class="mt-1 w-full px-3 py-2 rounded-bc bg-bc-surface-alt border border-bc-border text-sm text-bc-text-primary placeholder-bc-text-muted font-mono resize-y"></textarea>
+        </label>
+      </template>
+
+      <template v-if="form.category === 'rag'">
+        <label class="block text-xs text-bc-text-secondary mb-3">
+          Extraits de documents (séparés par une ligne « --- »)
+          <textarea v-model="form.passages" rows="8" placeholder="Source : fiche.md&#10;Texte de l'extrait…&#10;---&#10;Source : autre.md&#10;…" class="mt-1 w-full px-3 py-2 rounded-bc bg-bc-surface-alt border border-bc-border text-sm text-bc-text-primary placeholder-bc-text-muted resize-y"></textarea>
+          <span class="block mt-1 text-bc-text-secondary normal-case">Envoyés dans le message système, comme AnythingLLM le fait. Mots-clés ci-dessus : « a|b » accepte l'un ou l'autre.</span>
+        </label>
+        <label class="block text-xs text-bc-text-secondary mb-3">
+          Mots-clés interdits (faits inventés ou du mauvais extrait, séparés par des virgules, « a|b » accepté)
+          <input v-model="form.forbidden" type="text" placeholder="1,8 bar|1.8 bar, 2 ans" class="mt-1 w-full px-2 py-1.5 rounded-bc bg-bc-surface-alt border border-bc-border text-sm text-bc-text-primary" />
+        </label>
+        <label class="flex items-center gap-2 text-xs text-bc-text-secondary mb-3">
+          <input v-model="form.expectRefusal" type="checkbox" class="accent-bc-orange" />
+          L'information est absente des extraits : seule la phrase de refus est juste
         </label>
       </template>
 
@@ -204,6 +223,9 @@ const emptyForm = () => ({
   expectedTool: '',
   toolsJson: '',
   images: '',
+  passages: '',
+  forbidden: '',
+  expectRefusal: false,
 })
 
 const form = reactive(emptyForm())
@@ -243,6 +265,9 @@ function startEdit(categoryId, test) {
     expectedTool: test.expected_tool ?? '',
     toolsJson: test.tools ? JSON.stringify(test.tools, null, 2) : '',
     images: (test.images ?? []).join(', '),
+    passages: (test.passages ?? []).join('\n---\n'),
+    forbidden: (test.checks?.forbidden ?? []).join(', '),
+    expectRefusal: !!test.expect_refusal,
   })
   formError.value = ''
   view.value = 'form'
@@ -276,12 +301,19 @@ async function submit() {
     checks: {
       rules: form.rules.split(',').map((r) => r.trim()).filter(Boolean),
       judge_criteria: form.judgeCriteria.trim(),
+      ...(form.category === 'rag' ? { forbidden: form.forbidden.split(',').map((r) => r.trim()).filter(Boolean) } : {}),
     },
     ...(tools ? { tools } : {}),
     ...(form.expectedTool.trim() ? { expected_tool: form.expectedTool.trim() } : {}),
     ...(form.expectedAnswer.trim() ? { expected_answer: form.expectedAnswer.trim() } : {}),
     ...(form.category === 'vision' && form.images.trim()
       ? { images: form.images.split(',').map((f) => f.trim()).filter(Boolean) }
+      : {}),
+    ...(form.category === 'rag'
+      ? {
+          passages: form.passages.split(/\n\s*---\s*\n/).map((p) => p.trim()).filter(Boolean),
+          ...(form.expectRefusal ? { expect_refusal: true } : {}),
+        }
       : {}),
   }
 

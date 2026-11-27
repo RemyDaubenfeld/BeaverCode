@@ -13,6 +13,7 @@ import os
 import re
 import sys
 import time
+import unicodedata
 from datetime import datetime
 
 # ollama_client.py vit à la racine du projet (partagé avec un futur backend
@@ -278,6 +279,93 @@ You must output ONLY a JSON object with exactly these fields:
 }
 Scoring guide: 5=perfect, 4=good minor issues, 3=adequate missing points, 2=partial significant gaps, 1=poor/wrong.
 No other text. No markdown. Only the JSON object."""
+
+# ─── Tests « rag » ───────────────────────────────────────────────────────────
+# Le modèle reçoit des extraits de documents comme AnythingLLM les lui envoie (dans le message système,
+# blocs [CONTEXT n] … [END CONTEXT n]) et doit répondre UNIQUEMENT à partir d'eux. Documents inventés :
+# le modèle ne peut pas connaître la réponse par cœur, toute réponse vient des extraits (ou est inventée).
+# Notation par règles, sans juge (le juge, petit modèle, se laisserait tromper par une réponse plausible) :
+#   checks.rules      faits attendus (« a|b » = l'un ou l'autre)
+#   checks.forbidden  faits inventés ou pris dans le mauvais extrait (« a|b » aussi)
+#   expect_refusal    l'information est absente : seule la phrase de refus est juste
+
+# Règles du modèle gemma4-rag de cette machine (son SYSTEM). Envoyées à tous les modèles testés : on
+# compare leur respect des mêmes consignes.
+RAG_SYSTEM_PROMPT = """Tu es un assistant de recherche locale hautement rigoureux intégré à AnythingLLM.
+Ton unique mission est de répondre à la question de l'utilisateur en te basant EXCLUSIVEMENT sur les extraits de documents (le contexte) qui te sont fournis.
+
+RÈGLES STRICTES DU RAG :
+1. Si la réponse ne se trouve pas de manière explicite dans les documents fournis, dis textuellement : "Je ne trouve pas cette information dans les documents fournis." N'essaie JAMAIS d'inventer ou d'utiliser tes connaissances générales.
+2. Reste factuel, neutre et direct. Va droit au but sans phrases d'introduction inutiles.
+3. Réponds toujours en français (ou dans la langue de la question si spécifié).
+4. Structure tes réponses avec des puces claires si l'analyse contient plusieurs points.
+5. Si la question manque de précision pour fouiller efficacement dans les documents, pose une seule question de clarification pour affiner, tout en donnant la réponse basée sur l'hypothèse la plus logique pour ne pas bloquer l'utilisateur."""
+
+RAG_REFUSAL = "je ne trouve pas cette information"
+# refus formulé autrement que la phrase demandée : absence bien signalée, consigne de forme non suivie
+RAG_SOFT_REFUSALS = ["ne trouve pas", "aucune information", "pas d'information", "ne mentionne pas",
+                     "ne mentionnent pas", "ne precise pas", "ne precisent pas", "n'indique pas",
+                     "n'indiquent pas", "ne figure pas", "pas mentionne", "pas precise", "ne donne pas",
+                     "ne donnent pas", "ne contient pas", "ne contiennent pas", "ne fournit pas",
+                     "ne fournissent pas", "pas fourni", "pas indique", "pas communique", "n'apparait pas"]
+
+def rag_system(test: dict) -> str:
+    blocks = "\n\n".join(f"[CONTEXT {i}]:\n{p}\n[END CONTEXT {i}]" for i, p in enumerate(test.get("passages", [])))
+    return f"{RAG_SYSTEM_PROMPT}\n\nContext:\n{blocks}"
+
+def normalize_rag(text: str) -> str:
+    """Minuscules, sans accents ni espaces de milliers : « 48 350 € » = « 48350 € », « Précise » = « precise »."""
+    text = unicodedata.normalize("NFKD", text.replace("\u2019", "'"))
+    text = "".join(c for c in text if not unicodedata.combining(c)).lower()
+    text = re.sub(r"(?<=\d)[ \u00a0\u202f.](?=\d{3}\b)", "", text)
+    return re.sub(r"\s+", " ", text)
+
+def rag_hits(text: str, rules: list[str]) -> tuple[list[str], list[str]]:
+    """(règles trouvées, règles manquantes) dans `text` (déjà passé par normalize_rag) — une règle « a|b »
+    est trouvée si l'une des variantes l'est (désignée alors par cette variante, sinon par la première)."""
+    found, missing = [], []
+    for rule in rules:
+        variants = [v.strip() for v in rule.split("|") if v.strip()]
+        hit = next((v for v in variants if normalize_rag(v) in text), None)
+        if hit:
+            found.append(hit)
+        elif variants:
+            missing.append(variants[0])
+    return found, missing
+
+def score_rag(response: str, test: dict) -> tuple[int, str, str]:
+    checks = test.get("checks", {})
+    text = normalize_rag(response)
+    invented, _ = rag_hits(text, checks.get("forbidden", []))
+    exact_refusal = RAG_REFUSAL in text
+    soft_refusal = exact_refusal or any(r in text for r in RAG_SOFT_REFUSALS)
+
+    if test.get("expect_refusal"):
+        if invented:
+            return 1, "", f"information absente des extraits, mais le modèle répond quand même ({', '.join(invented)})"
+        if exact_refusal:
+            return 5, "signale l'absence avec la phrase demandée, sans rien inventer", ""
+        if soft_refusal:
+            return 3, "signale l'absence sans rien inventer", "pas avec la phrase exacte demandée par les consignes"
+        return 1, "", "information absente des extraits : le modèle aurait dû le dire"
+
+    found, missing = rag_hits(text, checks.get("rules", []))
+    if not found and exact_refusal:
+        return 1, "", "refuse alors que la réponse est dans les extraits"
+    score = max(1, round(5 * len(found) / len(found + missing))) if found or missing else 3
+    weaknesses = []
+    if missing:
+        weaknesses.append(f"manque : {', '.join(missing)}")
+    if invented:
+        score = min(score, 2)
+        weaknesses.append(f"invente ou prend dans le mauvais extrait : {', '.join(invented)}")
+    elif exact_refusal and not any("ne trouve pas" in r for r in checks.get("rules", [])):
+        # vu le 27/11 sur qwen3:4b : bonne réponse, puis « Je ne trouve pas cette information… » en dernière
+        # puce — l'utilisateur ne sait plus quoi croire
+        score = min(score, 4)
+        weaknesses.append("ajoute une phrase de refus qui contredit sa propre réponse")
+    strengths = f"trouvé : {', '.join(found)}" if found else ""
+    return score, strengths, " ; ".join(weaknesses)
 
 def score_with_judge(
     client: OllamaClient,
@@ -695,7 +783,8 @@ def benchmark_model(
             continue
 
         try:
-            run = run_prompt(client, model, test["prompt"], tools=test.get("tools"), images=load_test_images(test))
+            run = run_prompt(client, model, test["prompt"], tools=test.get("tools"), images=load_test_images(test),
+                             system=rag_system(test) if test_category(test) == "rag" else "")
         except Exception as e:
             if verbose:
                 print(f"ERREUR ({e})")
@@ -752,6 +841,11 @@ def benchmark_model(
             # (voir score_tool_call() — pas de rule_score/judge_score ici)
             final_score, strengths, weaknesses = score_tool_call(run["tool_calls"], expected_tool)
             rule_score = None
+            judge_result = None
+        elif test_category(test) == "rag":
+            # fidélité aux extraits, notée par règles seulement (voir score_rag())
+            final_score, strengths, weaknesses = score_rag(response, test)
+            rule_score = final_score
             judge_result = None
         else:
             rule_score, missing = score_rules(response, checks["rules"])

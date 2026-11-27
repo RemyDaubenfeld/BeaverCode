@@ -613,5 +613,300 @@
         "judge_criteria": "Date attendue : 2027-10-12 (un mardi). Demande de compter les années, l'année bissextile 2028 n'intervenant pas, et les longueurs de mois. Vérifiée par programme, sans juge."
       }
     }
+  ],
+  "rag": [
+    {
+      "id": "rag_fact_simple",
+      "label": "Fait présent dans un extrait",
+      "prompt": "Tous les combien faut-il nettoyer le filtre de la HX-40 ?",
+      "passages": [
+        "Source : fiche_entretien_HX-40.md\nPompe à chaleur Ardéa HX-40 — entretien courant. Le filtre à tamis du circuit d'eau se nettoie toutes les 6 semaines, à l'arrêt, après fermeture des deux vannes d'isolement. La pression de service doit rester entre 1,6 et 1,8 bar ; en dessous de 1,2 bar, l'unité se met en sécurité (code E-17)."
+      ],
+      "checks": {
+        "rules": [
+          "6 semaines|six semaines"
+        ],
+        "forbidden": [],
+        "judge_criteria": "Réponse dans l'extrait : toutes les 6 semaines. Noté par règles, sans juge."
+      }
+    },
+    {
+      "id": "rag_absent",
+      "label": "Information absente des extraits",
+      "prompt": "Combien coûte la pompe à chaleur HX-40 ?",
+      "passages": [
+        "Source : fiche_entretien_HX-40.md\nPompe à chaleur Ardéa HX-40 — entretien courant. Le filtre à tamis du circuit d'eau se nettoie toutes les 6 semaines, à l'arrêt, après fermeture des deux vannes d'isolement. La pression de service doit rester entre 1,6 et 1,8 bar ; en dessous de 1,2 bar, l'unité se met en sécurité (code E-17)."
+      ],
+      "expect_refusal": true,
+      "checks": {
+        "rules": [],
+        "forbidden": [
+          "€|euro|eur "
+        ],
+        "judge_criteria": "Le prix n'est dans aucun extrait : seule la phrase « Je ne trouve pas cette information dans les documents fournis. » est juste."
+      }
+    },
+    {
+      "id": "rag_general_knowledge",
+      "label": "Piège : question de culture générale",
+      "prompt": "Quelle est la distance moyenne entre la Terre et la Lune ?",
+      "passages": [
+        "Source : CR_reunion_2027-03-14.md\nClub d'astronomie Les Hiboux de Vesle — réunion du 14 mars 2027. Présents : 11 membres. Le télescope Dobson de 250 mm sera révisé par Bastien avant la soirée d'observation de la Lune du 3 avril, prévue sur le plateau de Courlandon à partir de 21 h. Cotisation annuelle maintenue à 35 €."
+      ],
+      "expect_refusal": true,
+      "checks": {
+        "rules": [],
+        "forbidden": [
+          "384|380 000|380000|km"
+        ],
+        "judge_criteria": "Le modèle connaît la réponse (≈ 384 400 km) mais elle n'est pas dans les extraits : il doit refuser au lieu d'utiliser ses connaissances générales."
+      }
+    },
+    {
+      "id": "rag_distractor",
+      "label": "Bon extrait parmi des extraits proches",
+      "prompt": "Quelle est la pression de service de la HX-45 ?",
+      "passages": [
+        "Source : fiche_entretien_HX-40.md\nPompe à chaleur Ardéa HX-40 — entretien courant. Le filtre à tamis du circuit d'eau se nettoie toutes les 6 semaines, à l'arrêt, après fermeture des deux vannes d'isolement. La pression de service doit rester entre 1,6 et 1,8 bar ; en dessous de 1,2 bar, l'unité se met en sécurité (code E-17).",
+        "Source : fiche_entretien_HX-45.md\nPompe à chaleur Ardéa HX-45 (modèle grand volume). Pression de service : 2,1 bar, tolérance ± 0,2 bar. Le filtre se nettoie tous les 2 mois. Code de mise en sécurité basse pression : E-21.",
+        "Source : planning_maintenance_2027.md\nVisites de maintenance des pompes à chaleur : HX-40 du bâtiment A en mai, HX-45 du gymnase en septembre. Prestataire : Thermiq Services."
+      ],
+      "checks": {
+        "rules": [
+          "2,1 bar|2.1 bar|2,1 bars|2.1 bars"
+        ],
+        "forbidden": [
+          "1,6|1.6|1,8|1.8"
+        ],
+        "judge_criteria": "Réponse : 2,1 bar (± 0,2). Les valeurs 1,6–1,8 bar sont celles de la HX-40, extrait voisin."
+      }
+    },
+    {
+      "id": "rag_contradiction",
+      "label": "Deux versions d'une procédure",
+      "prompt": "Tous les combien faut-il renouveler son badge d'accès au local serveur ?",
+      "passages": [
+        "Source : procedure_acces_v2.md (version du 4 mars 2025)\nLe badge d'accès au local serveur est valable 12 mois. Son renouvellement se demande au secrétariat.",
+        "Source : procedure_acces_v3.md (version du 2 septembre 2026, remplace la v2)\nLe badge d'accès au local serveur est désormais valable 18 mois. Le renouvellement se demande en ligne sur l'intranet, rubrique « Accès »."
+      ],
+      "checks": {
+        "rules": [
+          "18 mois|dix-huit mois|un an et demi"
+        ],
+        "forbidden": [],
+        "judge_criteria": "La v3 (2026) remplace la v2 : 18 mois. Mentionner l'ancienne règle de 12 mois est accepté, pas la donner comme réponse."
+      }
+    },
+    {
+      "id": "rag_combine",
+      "label": "Réponse à assembler depuis deux extraits",
+      "prompt": "Qui dirige l'équipe qui pilote le projet Lumen, et comment la joindre ?",
+      "passages": [
+        "Source : portefeuille_projets.md\nLe projet Lumen (refonte de l'éclairage public des hameaux) est piloté par l'équipe Orfèvre, avec un budget de 210 000 € sur trois ans.",
+        "Source : annuaire_equipes.md\nÉquipe Orfèvre : responsable Salomé Kerbrat, poste 4417. Équipe Tanneur : responsable Hugo Lemarié, poste 4380."
+      ],
+      "checks": {
+        "rules": [
+          "Kerbrat",
+          "4417"
+        ],
+        "forbidden": [
+          "Lemarié|4380"
+        ],
+        "judge_criteria": "Il faut relier les deux extraits : Lumen → équipe Orfèvre → Salomé Kerbrat, poste 4417."
+      }
+    },
+    {
+      "id": "rag_exact_figures",
+      "label": "Chiffres et références recopiés exactement",
+      "prompt": "Donne-moi le budget 2027 du dossier de rénovation de la médiathèque, sa référence et la date limite de dépôt.",
+      "passages": [
+        "Source : dossier_subvention_mediatheque.md\nDossier de subvention pour la rénovation de la médiathèque, référence DOS-2027-0193. Budget 2027 : 48 350 €, dont 12 % réservés à la formation des bénévoles. Date limite de dépôt du dossier complet : 17 octobre 2027, avant midi."
+      ],
+      "checks": {
+        "rules": [
+          "48 350",
+          "DOS-2027-0193",
+          "17 octobre|17/10"
+        ],
+        "forbidden": [],
+        "judge_criteria": "Valeurs exactes attendues : 48 350 €, DOS-2027-0193, 17 octobre 2027. Un chiffre arrondi ou une référence modifiée est une erreur."
+      }
+    },
+    {
+      "id": "rag_partial",
+      "label": "Question à moitié couverte par les extraits",
+      "prompt": "Tous les combien faut-il nettoyer le filtre de la HX-40, et quelle est la durée de sa garantie ?",
+      "passages": [
+        "Source : fiche_entretien_HX-40.md\nPompe à chaleur Ardéa HX-40 — entretien courant. Le filtre à tamis du circuit d'eau se nettoie toutes les 6 semaines, à l'arrêt, après fermeture des deux vannes d'isolement. La pression de service doit rester entre 1,6 et 1,8 bar ; en dessous de 1,2 bar, l'unité se met en sécurité (code E-17)."
+      ],
+      "checks": {
+        "rules": [
+          "6 semaines|six semaines",
+          "ne trouve pas|aucune information|pas d'information|ne mentionne pas|ne précise pas|n'indique pas|ne figure pas|pas mentionné|pas précisé"
+        ],
+        "forbidden": [
+          "2 ans|3 ans|5 ans|10 ans|deux ans|trois ans|cinq ans|dix ans|24 mois"
+        ],
+        "judge_criteria": "Répondre à la partie couverte (6 semaines) et dire que la garantie n'est pas dans les extraits, sans en inventer une."
+      }
+    },
+    {
+      "id": "rag_cross_language",
+      "label": "Document en anglais, question en français",
+      "prompt": "À quelle heure tourne la sauvegarde du NAS, et combien de sauvegardes sont conservées ?",
+      "passages": [
+        "Source : nas_backup_policy.md\nThe NAS backup job runs every night at 02:30 UTC and keeps 14 daily snapshots. Older snapshots are pruned automatically; monthly archives are stored off-site."
+      ],
+      "checks": {
+        "rules": [
+          "2h30|02h30|2:30|02:30|2 h 30",
+          "14",
+          "conserv|gard"
+        ],
+        "forbidden": [],
+        "judge_criteria": "02:30 UTC, 14 sauvegardes quotidiennes ; réponse en français (mot « conservées » ou « gardées » attendu)."
+      }
+    },
+    {
+      "id": "rag_long_needle",
+      "label": "Contexte long : info enfouie au milieu",
+      "prompt": "Quel est le code du coffre à clés du local technique ?",
+      "passages": [
+        "Source : CR_conseil_2027-02-08.md\nCompte rendu du conseil municipal de Vauclerc, séance du 8 février 2027. Présents : 13 conseillers sur 15. Le maire, Bernard Huchon, ouvre la séance à 20 h 10. Premier point : le budget de fonctionnement des équipements sportifs est reconduit à l'identique. Deuxième point : l'inventaire annuel du matériel communal, prévu en mars, tombe en même temps que les travaux de la salle polyvalente. Inès Moreau, adjointe aux bâtiments, propose de le reporter à fin mai. Julien Vasseur soutient la proposition, à condition que le matériel prêté aux associations soit recensé avant le 15 avril. Hugo Lemarié, conseiller délégué aux finances, s'y oppose, estimant que l'assurance exige un inventaire au premier trimestre. Le report est adopté par 9 voix contre 4. Troisième point : Julien Vasseur présente le bilan du marché de Noël (2 340 visiteurs, en hausse de 8 %). La séance est levée à 22 h 05.",
+        "Source : horaires_equipements_2027.md\nHoraires d'ouverture des équipements municipaux de Vauclerc à partir du 1er janvier 2027. La médiathèque est ouverte tous les jours de 10 h à 18 h, avec une nocturne jusqu'à 20 h le jeudi. Le gymnase Paul-Géraud accueille le public du lundi au samedi de 8 h à 22 h ; le dimanche, il est réservé aux clubs. La piscine intercommunale n'est pas gérée par la commune : ses horaires sont publiés par la communauté de communes. Le secrétariat de mairie reçoit sans rendez-vous le mardi et le vendredi de 9 h à 12 h, et sur rendez-vous les autres jours ouvrés. Les horaires peuvent être modifiés pendant les vacances scolaires ; les changements sont affichés à l'entrée de chaque équipement au moins une semaine à l'avance.",
+        "Source : consignes_local_technique.md\nConsignes d'accès au local technique de la mairie (sous-sol, porte B2). L'accès est réservé aux agents des services techniques et aux prestataires munis d'un ordre d'intervention. Avant d'entrer, désactiver l'alarme du sous-sol avec le code 4815 sur le clavier situé à gauche de la porte ; l'alarme se réarme seule au bout de 45 minutes. À l'intérieur, les clés des armoires électriques et de la chaufferie sont rangées dans le coffre à clés mural, au-dessus de l'établi, dont le code est 7392 ; ce code est changé chaque année au 1er janvier et communiqué par le responsable des services techniques. Ne jamais laisser la porte B2 calée ouverte. Tout incident (fuite, odeur de brûlé, disjoncteur déclenché) doit être signalé dans le cahier de liaison posé sur l'établi, puis au secrétariat le jour même.",
+        "Source : planning_maintenance_2027.md\nPlanning des maintenances préventives 2027. Chaudière de l'école : visite annuelle en octobre, avant la mise en chauffe. Pompes à chaleur de la mairie et de la médiathèque : deux visites, en avril et en novembre, assurées par Thermiq Services dans le cadre du contrat de maintenance. Extincteurs de tous les bâtiments : vérification en juin par la société Préventa. Ascenseur de la mairie : contrôle trimestriel. Les dates précises sont fixées par les prestataires au moins quinze jours à l'avance et notées dans le cahier de liaison du local technique. En cas de panne entre deux visites, le secrétariat ouvre une demande d'intervention auprès du prestataire concerné.",
+        "Source : contrat_maintenance_thermiq.md\nContrat de maintenance des pompes à chaleur entre la commune de Vauclerc et Thermiq Services, 14 rue des Tanneurs, 51100 Reims. Le contrat a été signé le 1er mars 2026 pour une durée de 18 mois. Il couvre deux visites préventives par an, le remplacement des filtres et les dépannages, pièces non comprises au-delà de 300 € par intervention. Le délai d'intervention garanti est de 48 heures ouvrées après la demande. Les demandes se font exclusivement par courriel à interventions@thermiq-services.example ou via l'espace client du prestataire ; aucune demande par téléphone n'est prise en compte au titre du contrat. Montant annuel : 2 760 € TTC, facturé en deux fois. Le référent technique chez le prestataire est Karim Belhadj."
+      ],
+      "checks": {
+        "rules": [
+          "7392"
+        ],
+        "forbidden": [
+          "4815"
+        ],
+        "judge_criteria": "Réponse : 7392, au milieu du 3e de 5 longs extraits. 4815 est le code de l'alarme, dans le même extrait."
+      }
+    },
+    {
+      "id": "rag_compute",
+      "label": "Réponse à calculer depuis un extrait",
+      "prompt": "Combien paiera une famille de deux adultes et d'un enfant de 12 ans pour s'inscrire au club d'astronomie en 2027 ?",
+      "passages": [
+        "Source : horaires_equipements_2027.md\nHoraires d'ouverture des équipements municipaux de Vauclerc à partir du 1er janvier 2027. La médiathèque est ouverte tous les jours de 10 h à 18 h, avec une nocturne jusqu'à 20 h le jeudi. Le gymnase Paul-Géraud accueille le public du lundi au samedi de 8 h à 22 h ; le dimanche, il est réservé aux clubs. La piscine intercommunale n'est pas gérée par la commune : ses horaires sont publiés par la communauté de communes. Le secrétariat de mairie reçoit sans rendez-vous le mardi et le vendredi de 9 h à 12 h, et sur rendez-vous les autres jours ouvrés. Les horaires peuvent être modifiés pendant les vacances scolaires ; les changements sont affichés à l'entrée de chaque équipement au moins une semaine à l'avance.",
+        "Source : tarifs_salles_2026.md\nTarifs de location des salles communales, délibération du 12 décembre 2025, applicables à partir du 1er janvier 2026. Salle polyvalente : 180 € la journée pour les habitants, 320 € pour les extérieurs. Préau de l'école : 60 € la journée, réservé aux habitants. Cuisine équipée : 40 € en supplément d'une salle. Caution : 500 € pour toutes les salles. Les associations de la commune bénéficient de deux locations gratuites par an.",
+        "Source : tarifs_club_astronomie_2027.md\nClub d'astronomie Les Hiboux de Vesle — cotisations 2027. Adulte : 35 €. Enfant de moins de 16 ans : 20 €. Étudiant sur justificatif : 25 €. Une famille d'au moins trois personnes inscrites bénéficie d'une réduction de 10 % sur le total des cotisations. La cotisation donne accès aux soirées d'observation, au prêt du télescope Dobson de 250 mm (sur réservation) et à la bibliothèque du club. Les cotisations se règlent avant le 31 janvier, par chèque ou en espèces au trésorier.",
+        "Source : calendrier_fermetures_2027.md\nJours fériés 2027. Tous les équipements municipaux sont fermés les jours fériés, à l'exception du gymnase Paul-Géraud, ouvert de 9 h à 13 h les jours fériés qui tombent en semaine. Le 15 août 2027 tombe un dimanche : le marché hebdomadaire est avancé au samedi 14. Pendant le pont de l'Ascension (vendredi 7 mai), le secrétariat de mairie est fermé mais une permanence téléphonique est assurée par l'élu d'astreinte.",
+        "Source : CR_conseil_2027-02-08.md\nCompte rendu du conseil municipal de Vauclerc, séance du 8 février 2027. Présents : 13 conseillers sur 15. Le maire, Bernard Huchon, ouvre la séance à 20 h 10. Premier point : le budget de fonctionnement des équipements sportifs est reconduit à l'identique. Deuxième point : l'inventaire annuel du matériel communal, prévu en mars, tombe en même temps que les travaux de la salle polyvalente. Inès Moreau, adjointe aux bâtiments, propose de le reporter à fin mai. Julien Vasseur soutient la proposition, à condition que le matériel prêté aux associations soit recensé avant le 15 avril. Hugo Lemarié, conseiller délégué aux finances, s'y oppose, estimant que l'assurance exige un inventaire au premier trimestre. Le report est adopté par 9 voix contre 4. Troisième point : Julien Vasseur présente le bilan du marché de Noël (2 340 visiteurs, en hausse de 8 %). La séance est levée à 22 h 05."
+      ],
+      "checks": {
+        "rules": [
+          "81"
+        ],
+        "forbidden": [],
+        "judge_criteria": "35 × 2 + 20 = 90 €, moins 10 % (famille de trois personnes) = 81 €."
+      }
+    },
+    {
+      "id": "rag_exception",
+      "label": "Règle générale contre horaires habituels",
+      "prompt": "La médiathèque est-elle ouverte le 15 août 2027 ?",
+      "passages": [
+        "Source : horaires_equipements_2027.md\nHoraires d'ouverture des équipements municipaux de Vauclerc à partir du 1er janvier 2027. La médiathèque est ouverte tous les jours de 10 h à 18 h, avec une nocturne jusqu'à 20 h le jeudi. Le gymnase Paul-Géraud accueille le public du lundi au samedi de 8 h à 22 h ; le dimanche, il est réservé aux clubs. La piscine intercommunale n'est pas gérée par la commune : ses horaires sont publiés par la communauté de communes. Le secrétariat de mairie reçoit sans rendez-vous le mardi et le vendredi de 9 h à 12 h, et sur rendez-vous les autres jours ouvrés. Les horaires peuvent être modifiés pendant les vacances scolaires ; les changements sont affichés à l'entrée de chaque équipement au moins une semaine à l'avance.",
+        "Source : tarifs_salles_2026.md\nTarifs de location des salles communales, délibération du 12 décembre 2025, applicables à partir du 1er janvier 2026. Salle polyvalente : 180 € la journée pour les habitants, 320 € pour les extérieurs. Préau de l'école : 60 € la journée, réservé aux habitants. Cuisine équipée : 40 € en supplément d'une salle. Caution : 500 € pour toutes les salles. Les associations de la commune bénéficient de deux locations gratuites par an.",
+        "Source : calendrier_fermetures_2027.md\nJours fériés 2027. Tous les équipements municipaux sont fermés les jours fériés, à l'exception du gymnase Paul-Géraud, ouvert de 9 h à 13 h les jours fériés qui tombent en semaine. Le 15 août 2027 tombe un dimanche : le marché hebdomadaire est avancé au samedi 14. Pendant le pont de l'Ascension (vendredi 7 mai), le secrétariat de mairie est fermé mais une permanence téléphonique est assurée par l'élu d'astreinte.",
+        "Source : planning_maintenance_2027.md\nPlanning des maintenances préventives 2027. Chaudière de l'école : visite annuelle en octobre, avant la mise en chauffe. Pompes à chaleur de la mairie et de la médiathèque : deux visites, en avril et en novembre, assurées par Thermiq Services dans le cadre du contrat de maintenance. Extincteurs de tous les bâtiments : vérification en juin par la société Préventa. Ascenseur de la mairie : contrôle trimestriel. Les dates précises sont fixées par les prestataires au moins quinze jours à l'avance et notées dans le cahier de liaison du local technique. En cas de panne entre deux visites, le secrétariat ouvre une demande d'intervention auprès du prestataire concerné.",
+        "Source : tarifs_club_astronomie_2027.md\nClub d'astronomie Les Hiboux de Vesle — cotisations 2027. Adulte : 35 €. Enfant de moins de 16 ans : 20 €. Étudiant sur justificatif : 25 €. Une famille d'au moins trois personnes inscrites bénéficie d'une réduction de 10 % sur le total des cotisations. La cotisation donne accès aux soirées d'observation, au prêt du télescope Dobson de 250 mm (sur réservation) et à la bibliothèque du club. Les cotisations se règlent avant le 31 janvier, par chèque ou en espèces au trésorier."
+      ],
+      "checks": {
+        "rules": [
+          "ferm"
+        ],
+        "forbidden": [
+          "oui, elle est ouverte|oui, la mediatheque est ouverte|est ouverte le 15 aout|sera ouverte le 15 aout|elle est ouverte de 10"
+        ],
+        "judge_criteria": "Non : jour férié, tous les équipements sont fermés sauf le gymnase. L'horaire « tous les jours de 10 h à 18 h » est le piège."
+      }
+    },
+    {
+      "id": "rag_implicit_date",
+      "label": "Date à déduire (signature + durée)",
+      "prompt": "Jusqu'à quand court le contrat de maintenance avec Thermiq Services ?",
+      "passages": [
+        "Source : planning_maintenance_2027.md\nPlanning des maintenances préventives 2027. Chaudière de l'école : visite annuelle en octobre, avant la mise en chauffe. Pompes à chaleur de la mairie et de la médiathèque : deux visites, en avril et en novembre, assurées par Thermiq Services dans le cadre du contrat de maintenance. Extincteurs de tous les bâtiments : vérification en juin par la société Préventa. Ascenseur de la mairie : contrôle trimestriel. Les dates précises sont fixées par les prestataires au moins quinze jours à l'avance et notées dans le cahier de liaison du local technique. En cas de panne entre deux visites, le secrétariat ouvre une demande d'intervention auprès du prestataire concerné.",
+        "Source : CR_conseil_2027-02-08.md\nCompte rendu du conseil municipal de Vauclerc, séance du 8 février 2027. Présents : 13 conseillers sur 15. Le maire, Bernard Huchon, ouvre la séance à 20 h 10. Premier point : le budget de fonctionnement des équipements sportifs est reconduit à l'identique. Deuxième point : l'inventaire annuel du matériel communal, prévu en mars, tombe en même temps que les travaux de la salle polyvalente. Inès Moreau, adjointe aux bâtiments, propose de le reporter à fin mai. Julien Vasseur soutient la proposition, à condition que le matériel prêté aux associations soit recensé avant le 15 avril. Hugo Lemarié, conseiller délégué aux finances, s'y oppose, estimant que l'assurance exige un inventaire au premier trimestre. Le report est adopté par 9 voix contre 4. Troisième point : Julien Vasseur présente le bilan du marché de Noël (2 340 visiteurs, en hausse de 8 %). La séance est levée à 22 h 05.",
+        "Source : contrat_maintenance_thermiq.md\nContrat de maintenance des pompes à chaleur entre la commune de Vauclerc et Thermiq Services, 14 rue des Tanneurs, 51100 Reims. Le contrat a été signé le 1er mars 2026 pour une durée de 18 mois. Il couvre deux visites préventives par an, le remplacement des filtres et les dépannages, pièces non comprises au-delà de 300 € par intervention. Le délai d'intervention garanti est de 48 heures ouvrées après la demande. Les demandes se font exclusivement par courriel à interventions@thermiq-services.example ou via l'espace client du prestataire ; aucune demande par téléphone n'est prise en compte au titre du contrat. Montant annuel : 2 760 € TTC, facturé en deux fois. Le référent technique chez le prestataire est Karim Belhadj.",
+        "Source : consignes_local_technique.md\nConsignes d'accès au local technique de la mairie (sous-sol, porte B2). L'accès est réservé aux agents des services techniques et aux prestataires munis d'un ordre d'intervention. Avant d'entrer, désactiver l'alarme du sous-sol avec le code 4815 sur le clavier situé à gauche de la porte ; l'alarme se réarme seule au bout de 45 minutes. À l'intérieur, les clés des armoires électriques et de la chaufferie sont rangées dans le coffre à clés mural, au-dessus de l'établi, dont le code est 7392 ; ce code est changé chaque année au 1er janvier et communiqué par le responsable des services techniques. Ne jamais laisser la porte B2 calée ouverte. Tout incident (fuite, odeur de brûlé, disjoncteur déclenché) doit être signalé dans le cahier de liaison posé sur l'établi, puis au secrétariat le jour même.",
+        "Source : avenant_tarifs_2027.md\nAvenant à la délibération sur les tarifs de location des salles, adopté le 4 décembre 2026, applicable au 1er janvier 2027. Suite aux travaux d'isolation, seul le tarif de la salle polyvalente est modifié : 210 € la journée pour les habitants et 360 € pour les extérieurs. Les autres tarifs et la caution restent inchangés."
+      ],
+      "checks": {
+        "rules": [
+          "septembre 2027|aout 2027|08/2027|09/2027|2027-08|2027-09"
+        ],
+        "forbidden": [],
+        "judge_criteria": "Signé le 1er mars 2026 pour 18 mois : jusqu'au 31 août / 1er septembre 2027."
+      }
+    },
+    {
+      "id": "rag_amendment",
+      "label": "Avenant qui ne change qu'un tarif",
+      "prompt": "En 2027, combien coûte la location à la journée de la salle polyvalente et du préau de l'école pour un habitant ?",
+      "passages": [
+        "Source : tarifs_salles_2026.md\nTarifs de location des salles communales, délibération du 12 décembre 2025, applicables à partir du 1er janvier 2026. Salle polyvalente : 180 € la journée pour les habitants, 320 € pour les extérieurs. Préau de l'école : 60 € la journée, réservé aux habitants. Cuisine équipée : 40 € en supplément d'une salle. Caution : 500 € pour toutes les salles. Les associations de la commune bénéficient de deux locations gratuites par an.",
+        "Source : horaires_equipements_2027.md\nHoraires d'ouverture des équipements municipaux de Vauclerc à partir du 1er janvier 2027. La médiathèque est ouverte tous les jours de 10 h à 18 h, avec une nocturne jusqu'à 20 h le jeudi. Le gymnase Paul-Géraud accueille le public du lundi au samedi de 8 h à 22 h ; le dimanche, il est réservé aux clubs. La piscine intercommunale n'est pas gérée par la commune : ses horaires sont publiés par la communauté de communes. Le secrétariat de mairie reçoit sans rendez-vous le mardi et le vendredi de 9 h à 12 h, et sur rendez-vous les autres jours ouvrés. Les horaires peuvent être modifiés pendant les vacances scolaires ; les changements sont affichés à l'entrée de chaque équipement au moins une semaine à l'avance.",
+        "Source : avenant_tarifs_2027.md\nAvenant à la délibération sur les tarifs de location des salles, adopté le 4 décembre 2026, applicable au 1er janvier 2027. Suite aux travaux d'isolation, seul le tarif de la salle polyvalente est modifié : 210 € la journée pour les habitants et 360 € pour les extérieurs. Les autres tarifs et la caution restent inchangés.",
+        "Source : CR_conseil_2027-02-08.md\nCompte rendu du conseil municipal de Vauclerc, séance du 8 février 2027. Présents : 13 conseillers sur 15. Le maire, Bernard Huchon, ouvre la séance à 20 h 10. Premier point : le budget de fonctionnement des équipements sportifs est reconduit à l'identique. Deuxième point : l'inventaire annuel du matériel communal, prévu en mars, tombe en même temps que les travaux de la salle polyvalente. Inès Moreau, adjointe aux bâtiments, propose de le reporter à fin mai. Julien Vasseur soutient la proposition, à condition que le matériel prêté aux associations soit recensé avant le 15 avril. Hugo Lemarié, conseiller délégué aux finances, s'y oppose, estimant que l'assurance exige un inventaire au premier trimestre. Le report est adopté par 9 voix contre 4. Troisième point : Julien Vasseur présente le bilan du marché de Noël (2 340 visiteurs, en hausse de 8 %). La séance est levée à 22 h 05.",
+        "Source : calendrier_fermetures_2027.md\nJours fériés 2027. Tous les équipements municipaux sont fermés les jours fériés, à l'exception du gymnase Paul-Géraud, ouvert de 9 h à 13 h les jours fériés qui tombent en semaine. Le 15 août 2027 tombe un dimanche : le marché hebdomadaire est avancé au samedi 14. Pendant le pont de l'Ascension (vendredi 7 mai), le secrétariat de mairie est fermé mais une permanence téléphonique est assurée par l'élu d'astreinte."
+      ],
+      "checks": {
+        "rules": [
+          "210",
+          "60"
+        ],
+        "forbidden": [],
+        "judge_criteria": "Salle polyvalente : 210 € (avenant 2027) ; préau : 60 €, inchangé par l'avenant, à reprendre dans la grille 2026."
+      }
+    },
+    {
+      "id": "rag_attribution",
+      "label": "Qui a dit quoi dans un compte rendu",
+      "prompt": "Qui a proposé de reporter l'inventaire du matériel communal, et à quand ?",
+      "passages": [
+        "Source : horaires_equipements_2027.md\nHoraires d'ouverture des équipements municipaux de Vauclerc à partir du 1er janvier 2027. La médiathèque est ouverte tous les jours de 10 h à 18 h, avec une nocturne jusqu'à 20 h le jeudi. Le gymnase Paul-Géraud accueille le public du lundi au samedi de 8 h à 22 h ; le dimanche, il est réservé aux clubs. La piscine intercommunale n'est pas gérée par la commune : ses horaires sont publiés par la communauté de communes. Le secrétariat de mairie reçoit sans rendez-vous le mardi et le vendredi de 9 h à 12 h, et sur rendez-vous les autres jours ouvrés. Les horaires peuvent être modifiés pendant les vacances scolaires ; les changements sont affichés à l'entrée de chaque équipement au moins une semaine à l'avance.",
+        "Source : planning_maintenance_2027.md\nPlanning des maintenances préventives 2027. Chaudière de l'école : visite annuelle en octobre, avant la mise en chauffe. Pompes à chaleur de la mairie et de la médiathèque : deux visites, en avril et en novembre, assurées par Thermiq Services dans le cadre du contrat de maintenance. Extincteurs de tous les bâtiments : vérification en juin par la société Préventa. Ascenseur de la mairie : contrôle trimestriel. Les dates précises sont fixées par les prestataires au moins quinze jours à l'avance et notées dans le cahier de liaison du local technique. En cas de panne entre deux visites, le secrétariat ouvre une demande d'intervention auprès du prestataire concerné.",
+        "Source : CR_conseil_2027-02-08.md\nCompte rendu du conseil municipal de Vauclerc, séance du 8 février 2027. Présents : 13 conseillers sur 15. Le maire, Bernard Huchon, ouvre la séance à 20 h 10. Premier point : le budget de fonctionnement des équipements sportifs est reconduit à l'identique. Deuxième point : l'inventaire annuel du matériel communal, prévu en mars, tombe en même temps que les travaux de la salle polyvalente. Inès Moreau, adjointe aux bâtiments, propose de le reporter à fin mai. Julien Vasseur soutient la proposition, à condition que le matériel prêté aux associations soit recensé avant le 15 avril. Hugo Lemarié, conseiller délégué aux finances, s'y oppose, estimant que l'assurance exige un inventaire au premier trimestre. Le report est adopté par 9 voix contre 4. Troisième point : Julien Vasseur présente le bilan du marché de Noël (2 340 visiteurs, en hausse de 8 %). La séance est levée à 22 h 05.",
+        "Source : consignes_local_technique.md\nConsignes d'accès au local technique de la mairie (sous-sol, porte B2). L'accès est réservé aux agents des services techniques et aux prestataires munis d'un ordre d'intervention. Avant d'entrer, désactiver l'alarme du sous-sol avec le code 4815 sur le clavier situé à gauche de la porte ; l'alarme se réarme seule au bout de 45 minutes. À l'intérieur, les clés des armoires électriques et de la chaufferie sont rangées dans le coffre à clés mural, au-dessus de l'établi, dont le code est 7392 ; ce code est changé chaque année au 1er janvier et communiqué par le responsable des services techniques. Ne jamais laisser la porte B2 calée ouverte. Tout incident (fuite, odeur de brûlé, disjoncteur déclenché) doit être signalé dans le cahier de liaison posé sur l'établi, puis au secrétariat le jour même.",
+        "Source : tarifs_salles_2026.md\nTarifs de location des salles communales, délibération du 12 décembre 2025, applicables à partir du 1er janvier 2026. Salle polyvalente : 180 € la journée pour les habitants, 320 € pour les extérieurs. Préau de l'école : 60 € la journée, réservé aux habitants. Cuisine équipée : 40 € en supplément d'une salle. Caution : 500 € pour toutes les salles. Les associations de la commune bénéficient de deux locations gratuites par an."
+      ],
+      "checks": {
+        "rules": [
+          "Moreau",
+          "fin mai|en mai|mai 2027|mois de mai|jusqu'en mai|31 mai"
+        ],
+        "forbidden": [],
+        "judge_criteria": "Inès Moreau propose le report à fin mai ; Julien Vasseur ne fait que soutenir, Hugo Lemarié s'y oppose."
+      }
+    },
+    {
+      "id": "rag_absent_long",
+      "label": "Info absente malgré un sujet très présent",
+      "prompt": "Quel est le numéro de téléphone de Thermiq Services pour une panne ?",
+      "passages": [
+        "Source : contrat_maintenance_thermiq.md\nContrat de maintenance des pompes à chaleur entre la commune de Vauclerc et Thermiq Services, 14 rue des Tanneurs, 51100 Reims. Le contrat a été signé le 1er mars 2026 pour une durée de 18 mois. Il couvre deux visites préventives par an, le remplacement des filtres et les dépannages, pièces non comprises au-delà de 300 € par intervention. Le délai d'intervention garanti est de 48 heures ouvrées après la demande. Les demandes se font exclusivement par courriel à interventions@thermiq-services.example ou via l'espace client du prestataire ; aucune demande par téléphone n'est prise en compte au titre du contrat. Montant annuel : 2 760 € TTC, facturé en deux fois. Le référent technique chez le prestataire est Karim Belhadj.",
+        "Source : planning_maintenance_2027.md\nPlanning des maintenances préventives 2027. Chaudière de l'école : visite annuelle en octobre, avant la mise en chauffe. Pompes à chaleur de la mairie et de la médiathèque : deux visites, en avril et en novembre, assurées par Thermiq Services dans le cadre du contrat de maintenance. Extincteurs de tous les bâtiments : vérification en juin par la société Préventa. Ascenseur de la mairie : contrôle trimestriel. Les dates précises sont fixées par les prestataires au moins quinze jours à l'avance et notées dans le cahier de liaison du local technique. En cas de panne entre deux visites, le secrétariat ouvre une demande d'intervention auprès du prestataire concerné.",
+        "Source : consignes_local_technique.md\nConsignes d'accès au local technique de la mairie (sous-sol, porte B2). L'accès est réservé aux agents des services techniques et aux prestataires munis d'un ordre d'intervention. Avant d'entrer, désactiver l'alarme du sous-sol avec le code 4815 sur le clavier situé à gauche de la porte ; l'alarme se réarme seule au bout de 45 minutes. À l'intérieur, les clés des armoires électriques et de la chaufferie sont rangées dans le coffre à clés mural, au-dessus de l'établi, dont le code est 7392 ; ce code est changé chaque année au 1er janvier et communiqué par le responsable des services techniques. Ne jamais laisser la porte B2 calée ouverte. Tout incident (fuite, odeur de brûlé, disjoncteur déclenché) doit être signalé dans le cahier de liaison posé sur l'établi, puis au secrétariat le jour même.",
+        "Source : CR_conseil_2027-02-08.md\nCompte rendu du conseil municipal de Vauclerc, séance du 8 février 2027. Présents : 13 conseillers sur 15. Le maire, Bernard Huchon, ouvre la séance à 20 h 10. Premier point : le budget de fonctionnement des équipements sportifs est reconduit à l'identique. Deuxième point : l'inventaire annuel du matériel communal, prévu en mars, tombe en même temps que les travaux de la salle polyvalente. Inès Moreau, adjointe aux bâtiments, propose de le reporter à fin mai. Julien Vasseur soutient la proposition, à condition que le matériel prêté aux associations soit recensé avant le 15 avril. Hugo Lemarié, conseiller délégué aux finances, s'y oppose, estimant que l'assurance exige un inventaire au premier trimestre. Le report est adopté par 9 voix contre 4. Troisième point : Julien Vasseur présente le bilan du marché de Noël (2 340 visiteurs, en hausse de 8 %). La séance est levée à 22 h 05.",
+        "Source : horaires_equipements_2027.md\nHoraires d'ouverture des équipements municipaux de Vauclerc à partir du 1er janvier 2027. La médiathèque est ouverte tous les jours de 10 h à 18 h, avec une nocturne jusqu'à 20 h le jeudi. Le gymnase Paul-Géraud accueille le public du lundi au samedi de 8 h à 22 h ; le dimanche, il est réservé aux clubs. La piscine intercommunale n'est pas gérée par la commune : ses horaires sont publiés par la communauté de communes. Le secrétariat de mairie reçoit sans rendez-vous le mardi et le vendredi de 9 h à 12 h, et sur rendez-vous les autres jours ouvrés. Les horaires peuvent être modifiés pendant les vacances scolaires ; les changements sont affichés à l'entrée de chaque équipement au moins une semaine à l'avance."
+      ],
+      "expect_refusal": true,
+      "checks": {
+        "rules": [],
+        "forbidden": [
+          "01 |02 |03 |04 |05 |06 |07 |09 |+33|01.|03.|06."
+        ],
+        "judge_criteria": "Aucun numéro dans les extraits (le contrat précise même que les demandes se font par courriel). Refus attendu ; mentionner l'adresse de courriel en plus est accepté."
+      }
+    }
   ]
 }

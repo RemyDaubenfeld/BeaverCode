@@ -18,6 +18,7 @@ import {
   PhotoIcon,
   QuestionMarkCircleIcon,
   AcademicCapIcon,
+  DocumentMagnifyingGlassIcon,
 } from '@heroicons/vue/24/outline'
 
 // Métadonnées d'affichage des catégories de test du benchmark — partagées
@@ -42,6 +43,7 @@ export const categoryLabels = {
   tool_calling: "Appel d'outils",
   vision: 'Vision',
   thinking: 'Problèmes à réflexion',
+  rag: 'Recherche documentaire (RAG)',
 }
 
 // Capacité de modèle associée à chaque catégorie de test — mêmes 6 capacités
@@ -65,6 +67,7 @@ export const categoryCapability = {
   tool_calling: 'tools',
   vision: 'vision',
   thinking: 'thinking',
+  rag: 'completion',
 }
 
 export const capabilityGroupLabels = {
@@ -105,6 +108,7 @@ export const knownCategories = [
   'tool_calling',
   'vision',
   'thinking',
+  'rag',
 ]
 
 // Icône par catégorie de test — repérer le type de test en un coup d'œil
@@ -125,6 +129,7 @@ export const categoryIcons = {
   tool_calling: WrenchScrewdriverIcon,
   vision: PhotoIcon,
   thinking: AcademicCapIcon,
+  rag: DocumentMagnifyingGlassIcon,
 }
 export const defaultCategoryIcon = QuestionMarkCircleIcon
 
@@ -155,6 +160,8 @@ export const categoryRequiredCapabilities = {
   vision: ['completion', 'vision'],
   // passés deux fois, réflexion activée puis coupée (voir run_thinking_test dans benchmark.py)
   thinking: ['completion', 'thinking'],
+  // extraits de documents dans le message système, notés par règles (voir score_rag dans benchmark.py)
+  rag: ['completion'],
 }
 
 // capacités exigées pour une catégorie (catégorie inconnue : simple complétion)
